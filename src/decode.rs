@@ -20,6 +20,13 @@ pub enum Instruction {
     Sra(RType),
     Or(RType),
     And(RType),
+
+    Beq(BType),
+    Bne(BType),
+    Blt(BType),
+    Bge(BType),
+    Bltu(BType),
+    Bgeu(BType),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -39,9 +46,30 @@ impl RType {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct BType {
+    rs1: u8,
+    rs2: u8,
+    immediate: u16,
+}
+
+impl BType {
+    fn new(instruction: u32) -> Self {
+        let immediate = instruction.get_bits(8..12)
+            + (instruction.get_bits(25..31) << 4)
+            + (instruction.get_bits(7..8) << 10)
+            + (instruction.get_bits(31..32) << 11);
+        Self {
+            rs1: instruction.get_bits(RS1_RANGE) as u8,
+            rs2: instruction.get_bits(RS2_RANGE) as u8,
+            immediate: immediate as u16,
+        }
+    }
+}
+
 pub fn decode(instruction: u32) -> Instruction {
     match instruction.get_bits(OPCODE_RANGE) {
-        // R Type
+        // R-Type
         0b0110011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => match instruction.get_bits(FUNCT7_RANGE) {
                 0b0000000 => Instruction::Add(RType::new(instruction)),
@@ -59,7 +87,12 @@ pub fn decode(instruction: u32) -> Instruction {
             },
             0b110 => Instruction::Or(RType::new(instruction)),
             0b111 => Instruction::And(RType::new(instruction)),
-            _ => unimplemented!(),
+            _ => panic!("Invalid instruction"),
+        },
+        // B-Type
+        0b1100011 => match instruction.get_bits(FUNCT3_RANGE) {
+            0b000 => Instruction::Beq(BType::new(instruction)),
+            _ => panic!("Invalid instruction"),
         },
         _ => unimplemented!(),
     }
@@ -170,5 +203,19 @@ mod tests {
             }),
             decode(0b0000000_00000_10001_111_01010_0110011)
         );
+    }
+
+    #[test]
+    fn decode_rv32i_b() {
+        // beq x1, x2, 2899
+        assert_eq!(
+            Instruction::Beq(BType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 2899
+            }),
+            // 101101010011
+            decode(0b1110101_00010_00001_000_00110_1100011)
+        )
     }
 }
