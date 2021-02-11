@@ -214,95 +214,95 @@ mod tests {
             }),
             decode(0b0000000_00000_10001_111_01010_0110011)
         );
+
+        // addi x1, x9, 64
+        assert_eq!(
+            Instruction::Addi(IType {
+                rd: 1,
+                rs1: 9,
+                imm: 64,
+            }),
+            decode(0b000010_00000_01001_000_00001_0010011)
+        );
+
+        // slli x2, x6, 17
+        assert_eq!(
+            Instruction::Slli(IType {
+                rd: 2,
+                rs1: 6,
+                imm: 17,
+            }),
+            decode(0b000000_10001_00110_001_00010_0010011)
+        );
+
+        // slti x3, x4, 16
+        assert_eq!(
+            Instruction::Slti(IType {
+                rd: 3,
+                rs1: 4,
+                imm: 16,
+            }),
+            decode(0b0000000_10000_00100_010_00011_0010011)
+        );
+
+        // sltiu x4, x19, 8
+        assert_eq!(
+            Instruction::Sltiu(IType {
+                rd: 4,
+                rs1: 19,
+                imm: 8,
+            }),
+            decode(0b0000000_01000_10011_011_00100_0010011)
+        );
+
+        // xori x5, x12, 4
+        assert_eq!(
+            Instruction::Xori(IType {
+                rd: 5,
+                rs1: 12,
+                imm: 4,
+            }),
+            decode(0b0000000_00100_01100_100_00101_0010011)
+        );
+
+        // srli x6, x17, 0
+        assert_eq!(
+            Instruction::Srli(IType {
+                rd: 6,
+                rs1: 17,
+                imm: 0,
+            }),
+            decode(0b0000000_00000_10001_101_00110_0010011)
+        );
+
+        // srai x7, x27, 1024
+        assert_eq!(
+            Instruction::Srai(IType {
+                rd: 7,
+                rs1: 27,
+                imm: 1024,
+            }),
+            decode(0b0100000_00000_11011_101_00111_0010011)
+        );
+
+        // ori x8, x13, 2
+        assert_eq!(
+            Instruction::Ori(IType {
+                rd: 8,
+                rs1: 13,
+                imm: 2,
+            }),
+            decode(0b0000000_00010_01101_110_01000_0010011)
+        );
+
+        // andi x9, x30, 1
+        assert_eq!(
+            Instruction::Andi(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 1,
+            }),
+            decode(0b0000000_00001_11110_111_01001_0010011)
+        );
     }
-    
-    // addi x1, x9, 64
-    assert_eq!(
-        Instruction::Addi(IType {
-            rd: 1,
-            rs1: 9,
-            imm: 64,
-        }),
-        decode(0b000010_00000_01001_000_00001_0010011)
-    );
-
-    // slli x2, x6, 17
-    assert_eq!(
-        Instruction::Slli(IType {
-            rd: 2,
-            rs1: 6,
-            imm: 17,
-        }),
-        decode(0b000000_10001_00110_001_00010_0010011)
-    );
-
-    // slti x3, x4, 16
-    assert_eq!(
-        Instruction::Slti(IType {
-            rd: 3,
-            rs1: 4,
-            imm: 16,
-        }),
-        decode(0b0000000_10000_00100_010_00011_0010011)
-    );
-
-    // sltiu x4, x19, 8
-    assert_eq!(
-        Instruction::Sltiu(IType {
-            rd: 4,
-            rs1: 19,
-            imm: 8,
-        }),
-        decode(0b0000000_01000_10011_011_00100_0010011)
-    );
-
-    // xori x5, x12, 4
-    assert_eq!(
-        Instruction::Xori(IType {
-            rd: 5,
-            rs1: 12,
-            imm: 4,
-        }),
-        decode(0b0000000_00100_01100_100_00101_0010011)
-    );
-
-    // srli x6, x17, 0
-    assert_eq!(
-        Instruction::Srli(IType {
-            rd: 6,
-            rs1: 17,
-            imm: 0,
-        }),
-        decode(0b0000000_00000_10001_101_00110_0010011)
-    );
-
-    // srai x7, x27, 1024
-    assert_eq!(
-        Instruction::Srai(IType {
-            rd: 7,
-            rs1: 27,
-            imm: 1024,
-        }),
-        decode(0b0100000_00000_11011_101_00111_0010011)
-    );
-
-    // ori x8, x13, 2
-    assert_eq!(
-        Instruction::Ori(IType {
-            rd: 8,
-            rs1: 13,
-            imm: 2,
-        }),
-        decode(0b0000000_00010_01101_110_01000_0010011)
-    );
-
-    // andi x9, x30, 1
-    assert_eq!(
-        Instruction::Andi(IType {
-            rd: 9,
-            rs1: 30,
-            rs2: 1,
-        }),
-        decode(0b0000000_00001_11110_111_01001_0010011)
-    );
 }
