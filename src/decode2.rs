@@ -24,7 +24,7 @@ pub enum Instruction {
 pub struct IType {
     rd: u8,
     rs1: u8,
-    imm: u8,
+    imm: u16,
 }
 
 impl IType {
@@ -32,7 +32,7 @@ impl IType {
         Self {
             rd: instruction.get_bits(RD_RANGE) as u8,
             rs1: instruction.get_bits(RS1_RANGE) as u8,
-            imm: instruction.get_bits(IMM_RANGE) as u8,
+            imm: instruction.get_bits(IMM_RANGE) as u16,
         }
     }
 }
@@ -46,7 +46,7 @@ pub fn decode(instruction: u32) -> Instruction {
             0b010 => Instruction::Slti(IType::new(instruction)),
             0b011 => Instruction::Sltiu(IType::new(instruction)),
             0b100 => Instruction::Xori(IType::new(instruction)),
-            0b101 => match instruction.get_bits(IMM) {
+            0b101 => match instruction.get_bits(IMM_RANGE) {
                 0b0000000_00000=>Instruction::Srli(IType::new(instruction)),
                 0b0100000_00000=>Instruction::Srai(IType::new(instruction)),
                 _ => unimplemented!(),
