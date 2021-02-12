@@ -7,7 +7,6 @@ const RS1_RANGE: Range<usize> = 15..20;
 const RS2_RANGE: Range<usize> = 20..25;
 const FUNCT3_RANGE: Range<usize> = 12..15;
 const FUNCT7_RANGE: Range<usize> = 25..32;
-const IMM_RANGE: Range<usize> = 20..32;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
@@ -59,10 +58,12 @@ impl RType {
 
 impl IType {
     fn new(instruction: u32) -> Self {
+        let immediate = instruction.get_bits(20..25)
+            + (instruction.get_bits(25..32) << 5);
         Self {
-            rd: instruction.get_bits(RD_RANGE) as u8,
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
-            imm: instruction.get_bits(IMM_RANGE) as u16,
+            rd: instruction.get_bits(RS1_RANGE) as u8,
+            rs1: instruction.get_bits(RS2_RANGE) as u8,
+            imm: immediate as u16,
         }
     }
 }
