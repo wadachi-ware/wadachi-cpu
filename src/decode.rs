@@ -71,8 +71,8 @@ pub struct BType {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UType {
-    rd: u8,
-    imm: u32,
+    pub rd: u8,
+    pub imm: u32,
 }
 
 impl RType {
