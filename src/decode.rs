@@ -10,6 +10,7 @@ const FUNCT7_RANGE: Range<usize> = 25..32;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
+    // R-Type
     Add(RType),
     Sub(RType),
     Sll(RType),
@@ -21,6 +22,7 @@ pub enum Instruction {
     Or(RType),
     And(RType),
 
+    // B-Type
     Beq(BType),
     Bne(BType),
     Blt(BType),
@@ -92,6 +94,11 @@ pub fn decode(instruction: u32) -> Instruction {
         // B-Type
         0b1100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Beq(BType::new(instruction)),
+            0b001 => Instruction::Bne(BType::new(instruction)),
+            0b100 => Instruction::Blt(BType::new(instruction)),
+            0b101 => Instruction::Bge(BType::new(instruction)),
+            0b110 => Instruction::Bltu(BType::new(instruction)),
+            0b111 => Instruction::Bgeu(BType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
         _ => unimplemented!(),
@@ -194,7 +201,7 @@ mod tests {
             decode(0b0000000_11001_11110_110_01001_0110011)
         );
 
-        // xor x10, x17, x0
+        // and x10, x17, x0
         assert_eq!(
             Instruction::And(RType {
                 rd: 10,
@@ -214,8 +221,57 @@ mod tests {
                 rs2: 2,
                 immediate: 2899
             }),
-            // 101101010011
             decode(0b1110101_00010_00001_000_00110_1100011)
-        )
+        );
+
+        // bne x1, x2, 1397
+        assert_eq!(
+            Instruction::Bne(BType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 1397
+            }),
+            decode(0b0010111_00010_00001_001_01011_1100011)
+        );
+
+        // blt x1, x2, 1397
+        assert_eq!(
+            Instruction::Blt(BType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 1397
+            }),
+            decode(0b0010111_00010_00001_100_01011_1100011)
+        );
+
+        // bge x1, x2, 1397
+        assert_eq!(
+            Instruction::Bge(BType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 2422
+            }),
+            decode(0b1010111_00010_00001_101_01100_1100011)
+        );
+
+        // bltu x1, x2, 1397
+        assert_eq!(
+            Instruction::Bltu(BType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 1397
+            }),
+            decode(0b0010111_00010_00001_110_01011_1100011)
+        );
+
+        // bgeu x1, x2, 1397
+        assert_eq!(
+            Instruction::Bgeu(BType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 1397
+            }),
+            decode(0b0010111_00010_00001_111_01011_1100011)
+        );
     }
 }
