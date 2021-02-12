@@ -185,7 +185,7 @@ pub fn decode(instruction: u32) -> Instruction {
         _ => unimplemented!(),
     }
 }
-
+ 
 #[cfg(test)]
 mod tests {
     use super::*;
