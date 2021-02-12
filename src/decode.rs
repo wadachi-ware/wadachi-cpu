@@ -7,6 +7,7 @@ const RS1_RANGE: Range<usize> = 15..20;
 const RS2_RANGE: Range<usize> = 20..25;
 const FUNCT3_RANGE: Range<usize> = 12..15;
 const FUNCT7_RANGE: Range<usize> = 25..32;
+const IMM_RANGE: Range<usize> = 20..32;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
@@ -58,12 +59,10 @@ impl RType {
 
 impl IType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(20..25)
-            + (instruction.get_bits(25..32) << 5);
         Self {
-            rd: instruction.get_bits(RS1_RANGE) as u8,
-            rs1: instruction.get_bits(RS2_RANGE) as u8,
-            imm: immediate as u16,
+            rd: instruction.get_bits(RD_RANGE) as u8,
+            rs1: instruction.get_bits(RS1_RANGE) as u8,
+            imm: instruction.get_bits(IMM_RANGE) as u16,
         }
     }
 }
@@ -215,7 +214,10 @@ mod tests {
             }),
             decode(0b0000000_00000_10001_111_01010_0110011)
         );
+    }
 
+    #[test]
+    fn decode_rv32i_i() {
         // addi x1, x9, 64
         assert_eq!(
             Instruction::Addi(IType {
@@ -223,7 +225,7 @@ mod tests {
                 rs1: 9,
                 imm: 64,
             }),
-            decode(0b000010_00000_01001_000_00001_0010011)
+            decode(0b0000010_00000_01001_000_00001_0010011)
         );
 
         // slli x2, x6, 17
@@ -233,7 +235,7 @@ mod tests {
                 rs1: 6,
                 imm: 17,
             }),
-            decode(0b000000_10001_00110_001_00010_0010011)
+            decode(0b0000000_10001_00110_001_00010_0010011)
         );
 
         // slti x3, x4, 16
@@ -266,14 +268,14 @@ mod tests {
             decode(0b0000000_00100_01100_100_00101_0010011)
         );
 
-        // srli x6, x17, 0
+        // srli x6, x17, 5
         assert_eq!(
             Instruction::Srli(IType {
                 rd: 6,
                 rs1: 17,
-                imm: 0,
+                imm: 5,
             }),
-            decode(0b0000000_00000_10001_101_00110_0010011)
+            decode(0b0000000_00101_10001_101_00110_0010011)
         );
 
         // srai x7, x27, 1024
