@@ -45,22 +45,23 @@ pub enum Instruction {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RType {
-    rd: u8,
-    rs1: u8,
-    rs2: u8,
+    pub rd: u8,
+    pub rs1: u8,
+    pub rs2: u8,
 }
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct IType {
-    rd: u8,
-    rs1: u8,
-    imm: u16,
+    pub rd: u8,
+    pub rs1: u8,
+    pub imm: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BType {
-    rs1: u8,
-    rs2: u8,
-    immediate: u16,
+    pub rs1: u8,
+    pub rs2: u8,
+    pub immediate: u16,
 }
 
 impl RType {
