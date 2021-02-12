@@ -96,9 +96,9 @@ pub fn decode(instruction: u32) -> Instruction {
             0b010 => Instruction::Slti(IType::new(instruction)),
             0b011 => Instruction::Sltiu(IType::new(instruction)),
             0b100 => Instruction::Xori(IType::new(instruction)),
-            0b101 => match instruction.get_bits(IMM_RANGE) {
-                0b0000000_00000=>Instruction::Srli(IType::new(instruction)),
-                0b0100000_00000=>Instruction::Srai(IType::new(instruction)),
+            0b101 => match instruction.get_bits(FUNCT7_RANGE) {
+                0b0000000=>Instruction::Srli(IType::new(instruction)),
+                0b0100000=>Instruction::Srai(IType::new(instruction)),
                 _ => unimplemented!(),
             },
             0b110 => Instruction::Ori(IType::new(instruction)),
