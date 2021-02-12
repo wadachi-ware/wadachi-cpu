@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_add() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_sub() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_sll() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_slt() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_sltu() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -241,7 +241,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_xor() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_srl() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_sra() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_and() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);
@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn calc_rv32i_r_or() {
-        let memory: Box<dyn Memory> = Box::new(EmptyMemory::new());
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
 
         let mut proc = Processor::new(memory);

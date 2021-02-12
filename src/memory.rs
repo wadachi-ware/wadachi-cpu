@@ -6,14 +6,7 @@ pub trait Memory {
 }
 
 #[derive(Debug)]
-pub struct EmptyMemory {
-}
-
-impl EmptyMemory {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+pub struct EmptyMemory;
 
 impl Memory for EmptyMemory {
     fn read_inst(&self, addr: usize) -> u32 {
@@ -113,7 +106,7 @@ mod tests {
 
     #[test]
     fn empty_memory() {
-        let mut mem = EmptyMemory::new();
+        let mut mem = EmptyMemory;
 
         assert_eq!(mem.read_word(0), 0);
         assert_eq!(mem.read_word(4), 0);
