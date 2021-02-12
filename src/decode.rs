@@ -47,8 +47,8 @@ pub enum Instruction {
     Bltu(BType),
     Bgeu(BType),
 
-    // S-Type
-    
+    // J-Type
+    Jal(JType),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -76,6 +76,12 @@ pub struct BType {
     pub rs1: u8,
     pub rs2: u8,
     pub immediate: u16,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct JType {
+    pub rd: u8,
+    pub immediate: u32,
 }
 
 impl RType {
@@ -120,6 +126,19 @@ impl BType {
             rs1: instruction.get_bits(RS1_RANGE) as u8,
             rs2: instruction.get_bits(RS2_RANGE) as u8,
             immediate: immediate as u16,
+        }
+    }
+}
+
+impl JType {
+    fn new(instruction: u32) -> Self {
+        let immediate = instruction.get_bits(21..31)
+            + (instruction.get_bits(20..21) << 10)
+            + (instruction.get_bits(12..20) << 11)
+            + (instruction.get_bits(31..32) << 19) << 1;
+        Self {
+            rd: instruction.get_bits(RD_RANGE) as u8,
+            immediate: immediate as u32,
         }
     }
 }
@@ -182,6 +201,10 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::Bgeu(BType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
+
+        // J-Type
+        0b1101111 => Instruction::Jal(JType::new(instruction)),
+
         _ => unimplemented!(),
     }
 }
@@ -479,6 +502,17 @@ mod tests {
                 immediate: 1397
             }),
             decode(0b0010111_00010_00001_111_01011_1100011)
+        );
+    }
+    #[test]
+    fn decode_rv32i_j() {
+        // beq x1, 8018
+        assert_eq!(
+            Instruction::Jal(JType {
+                rd: 1,
+                immediate: 8018,
+            }),
+            decode(0b01_1101010011_0_0000001_00001_1101111)
         );
     }
 }
