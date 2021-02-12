@@ -6,6 +6,30 @@ pub trait Memory {
 }
 
 #[derive(Debug)]
+pub struct EmptyMemory {
+}
+
+impl EmptyMemory {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Memory for EmptyMemory {
+    fn read_inst(&self, addr: usize) -> u32 {
+        0
+    }
+
+    fn read_word(&self, addr: usize) -> u32 {
+        0
+    }
+
+    fn write_word(&mut self, addr: usize, data: u32) {
+    }
+}
+
+
+#[derive(Debug)]
 pub struct VectorMemory {
     memory: Vec<u8>
 }
@@ -86,6 +110,26 @@ impl From<Vec<u8>> for VectorMemory {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn empty_memory() {
+        let mut mem = EmptyMemory::new();
+
+        assert_eq!(mem.read_word(0), 0);
+        assert_eq!(mem.read_word(4), 0);
+        assert_eq!(mem.read_word(8), 0);
+        assert_eq!(mem.read_word(12), 0);
+
+        mem.write_word(0, 0x12345678);
+        mem.write_word(4, 0x90abcdef);
+        mem.write_word(8, 0xdeadbeef);
+        mem.write_word(12, 0xabadbabe);
+
+        assert_eq!(mem.read_word(0), 0);
+        assert_eq!(mem.read_word(4), 0);
+        assert_eq!(mem.read_word(8), 0);
+        assert_eq!(mem.read_word(12), 0);
+    }
 
     #[test]
     fn vector_memory() {
