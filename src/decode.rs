@@ -171,6 +171,7 @@ pub fn decode(instruction: u32) -> Instruction {
             _ => panic!("Invalid instruction"),
         },
         // I Type
+        0b1100111 => Instruction::Jalr(IType::new(instruction)),
         0b0010011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Addi(IType::new(instruction)),
             0b001 => Instruction::Slli(IType::new(instruction)),
@@ -180,13 +181,20 @@ pub fn decode(instruction: u32) -> Instruction {
             0b101 => match instruction.get_bits(FUNCT7_RANGE) {
                 0b0000000 => Instruction::Srli(IType::new(instruction)),
                 0b0100000 => Instruction::Srai(IType::new(instruction)),
-                _ => unimplemented!(),
+                _ => panic!("Invalid instruction"),
             },
             0b110 => Instruction::Ori(IType::new(instruction)),
             0b111 => Instruction::Andi(IType::new(instruction)),
-            _ => unimplemented!(),
+            _ => panic!("Invalid instruction"),
         },
-        0b1100111 => Instruction::Jalr(IType::new(instruction)),
+        0b0000011 => match instruction.get_bits(FUNCT3_RANGE) {
+            0b000 => Instruction::Lb(IType::new(instruction)),
+            0b001 => Instruction::Lh(IType::new(instruction)),
+            0b010 => Instruction::Lw(IType::new(instruction)),
+            0b100 => Instruction::Lbu(IType::new(instruction)),
+            0b101 => Instruction::Lhu(IType::new(instruction)),
+            _ => panic!("Invalid instruction"),
+        },
         // S-Type
         0b0100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Sb(SType::new(instruction)),
@@ -207,7 +215,7 @@ pub fn decode(instruction: u32) -> Instruction {
         // U-Type
         0b0110111 => Instruction::Lui(UType::new(instruction)),
         0b0010111 => Instruction::Auipc(UType::new(instruction)),
-        _ => unimplemented!(),
+        _ => panic!("Invalid instruction"),
     }
 }
 
@@ -418,6 +426,56 @@ mod tests {
                 imm: 1,
             }),
             decode(0b0000000_00001_11110_111_01001_0010011)
+        );
+
+        // lb x9, x30, 2
+        assert_eq!(
+            Instruction::Lb(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 2,
+            }),
+            decode(0b0000000_00010_11110_000_01001_0000011)
+        );
+
+        // lh x9, x30, 1
+        assert_eq!(
+            Instruction::Lh(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 1,
+            }),
+            decode(0b0000000_00001_11110_001_01001_0000011)
+        );
+
+        // lw x9, x30, 2048
+        assert_eq!(
+            Instruction::Lw(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 2048,
+            }),
+            decode(0b1000000_00000_11110_010_01001_0000011)
+        );
+
+        // lbu x9, x30, 1
+        assert_eq!(
+            Instruction::Lbu(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 1,
+            }),
+            decode(0b0000000_00001_11110_100_01001_0000011)
+        );
+
+        // lhu x9, x30, 1
+        assert_eq!(
+            Instruction::Lhu(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 1,
+            }),
+            decode(0b0000000_00001_11110_101_01001_0000011)
         );
     }
 
