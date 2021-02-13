@@ -25,6 +25,7 @@ pub enum Instruction {
     And(RType),
 
     // I-Type
+    Jalr(IType),
     Addi(IType),
     Slli(IType),
     Slti(IType),
@@ -34,6 +35,11 @@ pub enum Instruction {
     Srai(IType),
     Ori(IType),
     Andi(IType),
+    Lb(IType),
+    Lh(IType),
+    Lw(IType),
+    Lbu(IType),
+    Lhu(IType),
 
     // S-Type
     Sb(SType),
@@ -164,7 +170,7 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::And(RType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
-        //I Type
+        // I Type
         0b0010011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Addi(IType::new(instruction)),
             0b001 => Instruction::Slli(IType::new(instruction)),
@@ -180,6 +186,7 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::Andi(IType::new(instruction)),
             _ => unimplemented!(),
         },
+        0b1100111 => Instruction::Jalr(IType::new(instruction)),
         // S-Type
         0b0100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Sb(SType::new(instruction)),
@@ -313,6 +320,16 @@ mod tests {
 
     #[test]
     fn decode_rv32i_i() {
+        // jalr x1, x9, 64
+        assert_eq!(
+            Instruction::Jalr(IType {
+                rd: 1,
+                rs1: 9,
+                imm: 64,
+            }),
+            decode(0b0000010_00000_01001_000_00001_1100111)
+        );
+
         // addi x1, x9, 64
         assert_eq!(
             Instruction::Addi(IType {
