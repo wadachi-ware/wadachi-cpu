@@ -25,6 +25,7 @@ pub enum Instruction {
     And(RType),
 
     // I-Type
+    Jalr(IType),
     Addi(IType),
     Slli(IType),
     Slti(IType),
@@ -34,6 +35,11 @@ pub enum Instruction {
     Srai(IType),
     Ori(IType),
     Andi(IType),
+    Lb(IType),
+    Lh(IType),
+    Lw(IType),
+    Lbu(IType),
+    Lhu(IType),
 
     // S-Type
     Sb(SType),
@@ -58,29 +64,36 @@ pub enum Instruction {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RType {
-    pub rd: u8,
-    pub rs1: u8,
-    pub rs2: u8,
+    pub rd: usize,
+    pub rs1: usize,
+    pub rs2: usize,
 }
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct IType {
-    pub rd: u8,
-    pub rs1: u8,
+    pub rd: usize,
+    pub rs1: usize,
     pub imm: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SType {
-    pub rs1: u8,
-    pub rs2: u8,
+    pub rs1: usize,
+    pub rs2: usize,
     pub immediate: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BType {
-    pub rs1: u8,
-    pub rs2: u8,
-    pub immediate: u16,
+    rs1: usize,
+    rs2: usize,
+    imm: u16,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct UType {
+    pub rd: usize,
+    pub imm: u32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -98,9 +111,9 @@ pub struct JType {
 impl RType {
     fn new(instruction: u32) -> Self {
         Self {
-            rd: instruction.get_bits(RD_RANGE) as u8,
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
-            rs2: instruction.get_bits(RS2_RANGE) as u8,
+            rd: instruction.get_bits(RD_RANGE) as usize,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
+            rs2: instruction.get_bits(RS2_RANGE) as usize,
         }
     }
 }
@@ -108,8 +121,8 @@ impl RType {
 impl IType {
     fn new(instruction: u32) -> Self {
         Self {
-            rd: instruction.get_bits(RD_RANGE) as u8,
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
+            rd: instruction.get_bits(RD_RANGE) as usize,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
             imm: instruction.get_bits(IMM_RANGE) as u16,
         }
     }
@@ -117,11 +130,10 @@ impl IType {
 
 impl SType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(7..12)
-            + (instruction.get_bits(25..32) << 5);
+        let immediate = instruction.get_bits(7..12) + (instruction.get_bits(25..32) << 5);
         Self {
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
-            rs2: instruction.get_bits(RS2_RANGE) as u8,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
+            rs2: instruction.get_bits(RS2_RANGE) as usize,
             immediate: immediate as u16,
         }
     }
@@ -129,14 +141,24 @@ impl SType {
 
 impl BType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(8..12)
+        let imm = instruction.get_bits(8..12)
             + (instruction.get_bits(25..31) << 4)
             + (instruction.get_bits(7..8) << 10)
             + (instruction.get_bits(31..32) << 11);
         Self {
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
-            rs2: instruction.get_bits(RS2_RANGE) as u8,
-            immediate: immediate as u16,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
+            rs2: instruction.get_bits(RS2_RANGE) as usize,
+            imm: imm as u16,
+        }
+    }
+}
+
+impl UType {
+    fn new(instruction: u32) -> Self {
+        let imm = instruction.get_bits(UPPER_IMM_RANGE) << 12;
+        Self {
+            rd: instruction.get_bits(RD_RANGE) as usize,
+            imm,
         }
     }
 }
@@ -186,8 +208,8 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::And(RType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
-
-        //I Type
+        // I Type
+        0b1100111 => Instruction::Jalr(IType::new(instruction)),
         0b0010011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Addi(IType::new(instruction)),
             0b001 => Instruction::Slli(IType::new(instruction)),
@@ -195,15 +217,22 @@ pub fn decode(instruction: u32) -> Instruction {
             0b011 => Instruction::Sltiu(IType::new(instruction)),
             0b100 => Instruction::Xori(IType::new(instruction)),
             0b101 => match instruction.get_bits(FUNCT7_RANGE) {
-                0b0000000=>Instruction::Srli(IType::new(instruction)),
-                0b0100000=>Instruction::Srai(IType::new(instruction)),
-                _ => unimplemented!(),
+                0b0000000 => Instruction::Srli(IType::new(instruction)),
+                0b0100000 => Instruction::Srai(IType::new(instruction)),
+                _ => panic!("Invalid instruction"),
             },
             0b110 => Instruction::Ori(IType::new(instruction)),
             0b111 => Instruction::Andi(IType::new(instruction)),
-            _ => unimplemented!(),
+            _ => panic!("Invalid instruction"),
         },
-
+        0b0000011 => match instruction.get_bits(FUNCT3_RANGE) {
+            0b000 => Instruction::Lb(IType::new(instruction)),
+            0b001 => Instruction::Lh(IType::new(instruction)),
+            0b010 => Instruction::Lw(IType::new(instruction)),
+            0b100 => Instruction::Lbu(IType::new(instruction)),
+            0b101 => Instruction::Lhu(IType::new(instruction)),
+            _ => panic!("Invalid instruction"),
+        },
         // S-Type
         0b0100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Sb(SType::new(instruction)),
@@ -211,7 +240,6 @@ pub fn decode(instruction: u32) -> Instruction {
             0b010 => Instruction::Sw(SType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
-
         // B-Type
         0b1100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Beq(BType::new(instruction)),
@@ -222,7 +250,7 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::Bgeu(BType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
-
+      
         // J-Type
         0b1101111 => Instruction::Jal(JType::new(instruction)),
 
@@ -232,7 +260,7 @@ pub fn decode(instruction: u32) -> Instruction {
         _ => panic!("Invalid instruction"),
     }
 }
- 
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -342,6 +370,16 @@ mod tests {
 
     #[test]
     fn decode_rv32i_i() {
+        // jalr x1, x9, 64
+        assert_eq!(
+            Instruction::Jalr(IType {
+                rd: 1,
+                rs1: 9,
+                imm: 64,
+            }),
+            decode(0b0000010_00000_01001_000_00001_1100111)
+        );
+
         // addi x1, x9, 64
         assert_eq!(
             Instruction::Addi(IType {
@@ -431,6 +469,56 @@ mod tests {
             }),
             decode(0b0000000_00001_11110_111_01001_0010011)
         );
+
+        // lb x9, x30, 2
+        assert_eq!(
+            Instruction::Lb(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 2,
+            }),
+            decode(0b0000000_00010_11110_000_01001_0000011)
+        );
+
+        // lh x9, x30, 1
+        assert_eq!(
+            Instruction::Lh(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 1,
+            }),
+            decode(0b0000000_00001_11110_001_01001_0000011)
+        );
+
+        // lw x9, x30, 2048
+        assert_eq!(
+            Instruction::Lw(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 2048,
+            }),
+            decode(0b1000000_00000_11110_010_01001_0000011)
+        );
+
+        // lbu x9, x30, 1
+        assert_eq!(
+            Instruction::Lbu(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 1,
+            }),
+            decode(0b0000000_00001_11110_100_01001_0000011)
+        );
+
+        // lhu x9, x30, 1
+        assert_eq!(
+            Instruction::Lhu(IType {
+                rd: 9,
+                rs1: 30,
+                imm: 1,
+            }),
+            decode(0b0000000_00001_11110_101_01001_0000011)
+        );
     }
 
     #[test]
@@ -473,7 +561,7 @@ mod tests {
             Instruction::Beq(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 2899
+                imm: 2899,
             }),
             decode(0b1110101_00010_00001_000_00110_1100011)
         );
@@ -483,7 +571,7 @@ mod tests {
             Instruction::Bne(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_001_01011_1100011)
         );
@@ -493,7 +581,7 @@ mod tests {
             Instruction::Blt(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_100_01011_1100011)
         );
@@ -503,7 +591,7 @@ mod tests {
             Instruction::Bge(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 2422
+                imm: 2422,
             }),
             decode(0b1010111_00010_00001_101_01100_1100011)
         );
@@ -513,7 +601,7 @@ mod tests {
             Instruction::Bltu(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_110_01011_1100011)
         );
@@ -523,11 +611,12 @@ mod tests {
             Instruction::Bgeu(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_111_01011_1100011)
         );
     }
+
     #[test]
     fn decode_rv32i_j() {
         // beq x1, 8018
