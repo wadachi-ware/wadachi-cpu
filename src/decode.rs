@@ -97,12 +97,6 @@ pub struct UType {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct UType {
-    pub rd: usize,
-    pub imm: u32,
-}
-
-#[derive(Debug, PartialEq, Eq)]
 pub struct JType {
     pub rd: u8,
     pub immediate: u32,
@@ -153,15 +147,6 @@ impl BType {
     }
 }
 
-impl UType {
-    fn new(instruction: u32) -> Self {
-        let imm = instruction.get_bits(UPPER_IMM_RANGE) << 12;
-        Self {
-            rd: instruction.get_bits(RD_RANGE) as usize,
-            imm,
-        }
-    }
-}
 
 impl UType {
     fn new(instruction: u32) -> Self {
