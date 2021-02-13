@@ -88,7 +88,8 @@ impl BType {
         let immediate = instruction.get_bits(8..12)
             + (instruction.get_bits(25..31) << 4)
             + (instruction.get_bits(7..8) << 10)
-            + (instruction.get_bits(31..32) << 11);
+            + (instruction.get_bits(31..32) << 11)
+            << 1;
         Self {
             rs1: instruction.get_bits(RS1_RANGE) as u8,
             rs2: instruction.get_bits(RS2_RANGE) as u8,
@@ -137,8 +138,8 @@ pub fn decode(instruction: u32) -> Instruction {
             0b011 => Instruction::Sltiu(IType::new(instruction)),
             0b100 => Instruction::Xori(IType::new(instruction)),
             0b101 => match instruction.get_bits(FUNCT7_RANGE) {
-                0b0000000=>Instruction::Srli(IType::new(instruction)),
-                0b0100000=>Instruction::Srai(IType::new(instruction)),
+                0b0000000 => Instruction::Srli(IType::new(instruction)),
+                0b0100000 => Instruction::Srai(IType::new(instruction)),
                 _ => unimplemented!(),
             },
             0b110 => Instruction::Ori(IType::new(instruction)),
@@ -356,9 +357,9 @@ mod tests {
             Instruction::Beq(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 2899
+                immediate: 2048
             }),
-            decode(0b1110101_00010_00001_000_00110_1100011)
+            decode(0b0000000_00010_00001_000_00001_1100011)
         );
 
         // bne x1, x2, 1397
@@ -366,9 +367,9 @@ mod tests {
             Instruction::Bne(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                immediate: 1024
             }),
-            decode(0b0010111_00010_00001_001_01011_1100011)
+            decode(0b0100000_00010_00001_001_00000_1100011)
         );
 
         // blt x1, x2, 1397
@@ -376,9 +377,9 @@ mod tests {
             Instruction::Blt(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                immediate: 1024
             }),
-            decode(0b0010111_00010_00001_100_01011_1100011)
+            decode(0b0100000_00010_00001_100_00000_1100011)
         );
 
         // bge x1, x2, 1397
@@ -386,9 +387,9 @@ mod tests {
             Instruction::Bge(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 2422
+                immediate: 1024
             }),
-            decode(0b1010111_00010_00001_101_01100_1100011)
+            decode(0b0100000_00010_00001_101_00000_1100011)
         );
 
         // bltu x1, x2, 1397
@@ -396,9 +397,9 @@ mod tests {
             Instruction::Bltu(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                immediate: 1024
             }),
-            decode(0b0010111_00010_00001_110_01011_1100011)
+            decode(0b0100000_00010_00001_110_00000_1100011)
         );
 
         // bgeu x1, x2, 1397
@@ -406,9 +407,9 @@ mod tests {
             Instruction::Bgeu(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                immediate: 1024
             }),
-            decode(0b0010111_00010_00001_111_01011_1100011)
+            decode(0b0100000_00010_00001_111_00000_1100011)
         );
     }
 }
