@@ -8,6 +8,7 @@ const RS2_RANGE: Range<usize> = 20..25;
 const FUNCT3_RANGE: Range<usize> = 12..15;
 const FUNCT7_RANGE: Range<usize> = 25..32;
 const IMM_RANGE: Range<usize> = 20..32;
+const UPPER_IMM_RANGE: Range<usize> = 12..32;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
@@ -49,6 +50,10 @@ pub enum Instruction {
 
     // J-Type
     Jal(JType),
+
+    // U-Type
+    Lui(UType),
+    Auipc(UType),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -76,6 +81,12 @@ pub struct BType {
     pub rs1: u8,
     pub rs2: u8,
     pub immediate: u16,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct UType {
+    pub rd: usize,
+    pub imm: u32,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -126,6 +137,16 @@ impl BType {
             rs1: instruction.get_bits(RS1_RANGE) as u8,
             rs2: instruction.get_bits(RS2_RANGE) as u8,
             immediate: immediate as u16,
+        }
+    }
+}
+
+impl UType {
+    fn new(instruction: u32) -> Self {
+        let imm = instruction.get_bits(UPPER_IMM_RANGE) << 12;
+        Self {
+            rd: instruction.get_bits(RD_RANGE) as usize,
+            imm,
         }
     }
 }
@@ -205,7 +226,10 @@ pub fn decode(instruction: u32) -> Instruction {
         // J-Type
         0b1101111 => Instruction::Jal(JType::new(instruction)),
 
-        _ => unimplemented!(),
+        // U-Type
+        0b0110111 => Instruction::Lui(UType::new(instruction)),
+        0b0010111 => Instruction::Auipc(UType::new(instruction)),
+        _ => panic!("Invalid instruction"),
     }
 }
  
@@ -513,6 +537,27 @@ mod tests {
                 immediate: 8018,
             }),
             decode(0b01_1101010011_0_0000001_00001_1101111)
+        );
+    }
+
+    #[test]
+    fn decode_rv32_u() {
+        // lui x1, 623706
+        assert_eq!(
+            Instruction::Lui(UType {
+                rd: 1,
+                imm: 2554699776,
+            }),
+            decode(0b10011000010001011010_00001_0110111)
+        );
+
+        // auipc x1, 103275
+        assert_eq!(
+            Instruction::Auipc(UType {
+                rd: 1,
+                imm: 423014400,
+            }),
+            decode(0b00011001001101101011_00001_0010111)
         );
     }
 }
