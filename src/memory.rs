@@ -69,6 +69,8 @@ impl VectorMemory {
     }
 
     /// read an instruction located at addr
+    /// This impl stores instructions as big-endian value
+    /// but, we don't know whether it's popular...
     pub fn write_inst(&mut self, addr: usize, inst: u32) {
         self.write_bw(addr, inst);
     }
