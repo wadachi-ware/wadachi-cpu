@@ -1,7 +1,10 @@
 pub trait Memory {
     fn read_inst(&self, addr: usize) -> u32;
 
+    fn read_byte(&self, addr: usize) -> u8;
+    fn read_halfword(&self, addr: usize) -> u16;
     fn read_word(&self, addr: usize) -> u32;
+
     fn write_word(&mut self, addr: usize, data: u32);
 }
 
@@ -10,6 +13,14 @@ pub struct EmptyMemory;
 
 impl Memory for EmptyMemory {
     fn read_inst(&self, _addr: usize) -> u32 {
+        0
+    }
+
+    fn read_byte(&self, _addr: usize) -> u8 {
+        0
+    }
+
+    fn read_halfword(&self, _addr: usize) -> u16 {
         0
     }
 
@@ -31,6 +42,17 @@ impl VectorMemory {
         memory.resize(size, 0);
 
         Self { memory }
+    }
+
+    /// read little-endian byte located at *addr*
+    fn read_lb(&self, addr: usize) -> u8 {
+        self.memory[addr]
+    }
+
+    /// read little-endian half word located at *addr*
+    fn read_lh(&self, addr: usize) -> u16 {
+        (self.memory[addr] as u16)
+            | (self.memory[addr + 1] as u16) << 8
     }
 
     /// read big-endian word located at *addr*
@@ -77,6 +99,16 @@ impl Memory for VectorMemory {
     /// read an instruction located at *addr*
     fn read_inst(&self, addr: usize) -> u32 {
         self.read_bw(addr)
+    }
+
+    /// read byte located at *addr*
+    fn read_byte(&self, addr: usize) -> u8 {
+        self.read_lb(addr)
+    }
+
+    /// read half word located at *addr*
+    fn read_halfword(&self, addr: usize) -> u16 {
+        self.read_lh(addr)
     }
 
     /// read word located at *addr*
