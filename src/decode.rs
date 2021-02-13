@@ -8,6 +8,7 @@ const RS2_RANGE: Range<usize> = 20..25;
 const FUNCT3_RANGE: Range<usize> = 12..15;
 const FUNCT7_RANGE: Range<usize> = 25..32;
 const IMM_RANGE: Range<usize> = 20..32;
+const UPPER_IMM_RANGE: Range<usize> = 12..32;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
@@ -47,8 +48,9 @@ pub enum Instruction {
     Bltu(BType),
     Bgeu(BType),
 
-    // S-Type
-    
+    // U-Type
+    Lui(UType),
+    Auipc(UType),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -57,6 +59,7 @@ pub struct RType {
     pub rs1: u8,
     pub rs2: u8,
 }
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct IType {
     pub rd: u8,
@@ -73,9 +76,15 @@ pub struct SType {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BType {
-    pub rs1: u8,
-    pub rs2: u8,
-    pub immediate: u16,
+    rs1: u8,
+    rs2: u8,
+    imm: u16,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct UType {
+    pub rd: u8,
+    pub imm: u32,
 }
 
 impl RType {
@@ -112,14 +121,24 @@ impl SType {
 
 impl BType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(8..12)
+        let imm = instruction.get_bits(8..12)
             + (instruction.get_bits(25..31) << 4)
             + (instruction.get_bits(7..8) << 10)
             + (instruction.get_bits(31..32) << 11);
         Self {
             rs1: instruction.get_bits(RS1_RANGE) as u8,
             rs2: instruction.get_bits(RS2_RANGE) as u8,
-            immediate: immediate as u16,
+            imm: imm as u16,
+        }
+    }
+}
+
+impl UType {
+    fn new(instruction: u32) -> Self {
+        let imm = instruction.get_bits(UPPER_IMM_RANGE) << 12;
+        Self {
+            rd: instruction.get_bits(RD_RANGE) as u8,
+            imm,
         }
     }
 }
@@ -146,7 +165,6 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::And(RType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
-
         //I Type
         0b0010011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Addi(IType::new(instruction)),
@@ -155,15 +173,14 @@ pub fn decode(instruction: u32) -> Instruction {
             0b011 => Instruction::Sltiu(IType::new(instruction)),
             0b100 => Instruction::Xori(IType::new(instruction)),
             0b101 => match instruction.get_bits(FUNCT7_RANGE) {
-                0b0000000=>Instruction::Srli(IType::new(instruction)),
-                0b0100000=>Instruction::Srai(IType::new(instruction)),
+                0b0000000 => Instruction::Srli(IType::new(instruction)),
+                0b0100000 => Instruction::Srai(IType::new(instruction)),
                 _ => unimplemented!(),
             },
             0b110 => Instruction::Ori(IType::new(instruction)),
             0b111 => Instruction::Andi(IType::new(instruction)),
             _ => unimplemented!(),
         },
-
         // S-Type
         0b0100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Sb(SType::new(instruction)),
@@ -171,7 +188,6 @@ pub fn decode(instruction: u32) -> Instruction {
             0b010 => Instruction::Sw(SType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
-
         // B-Type
         0b1100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Beq(BType::new(instruction)),
@@ -182,6 +198,9 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::Bgeu(BType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
+        // U-Type
+        0b0110111 => Instruction::Lui(UType::new(instruction)),
+        0b0010111 => Instruction::Auipc(UType::new(instruction)),
         _ => unimplemented!(),
     }
 }
@@ -426,7 +445,7 @@ mod tests {
             Instruction::Beq(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 2899
+                imm: 2899,
             }),
             decode(0b1110101_00010_00001_000_00110_1100011)
         );
@@ -436,7 +455,7 @@ mod tests {
             Instruction::Bne(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_001_01011_1100011)
         );
@@ -446,7 +465,7 @@ mod tests {
             Instruction::Blt(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_100_01011_1100011)
         );
@@ -456,7 +475,7 @@ mod tests {
             Instruction::Bge(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 2422
+                imm: 2422,
             }),
             decode(0b1010111_00010_00001_101_01100_1100011)
         );
@@ -466,7 +485,7 @@ mod tests {
             Instruction::Bltu(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_110_01011_1100011)
         );
@@ -476,9 +495,30 @@ mod tests {
             Instruction::Bgeu(BType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397,
             }),
             decode(0b0010111_00010_00001_111_01011_1100011)
+        );
+    }
+
+    #[test]
+    fn decode_rv32_u() {
+        // lui x1, 623706
+        assert_eq!(
+            Instruction::Lui(UType {
+                rd: 1,
+                imm: 2554699776,
+            }),
+            decode(0b10011000010001011010_00001_0110111)
+        );
+
+        // auipc x1, 103275
+        assert_eq!(
+            Instruction::Auipc(UType {
+                rd: 1,
+                imm: 423014400,
+            }),
+            decode(0b00011001001101101011_00001_0010111)
         );
     }
 }
