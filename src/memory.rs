@@ -9,18 +9,17 @@ pub trait Memory {
 pub struct EmptyMemory;
 
 impl Memory for EmptyMemory {
-    fn read_inst(&self, addr: usize) -> u32 {
+    fn read_inst(&self, _addr: usize) -> u32 {
         0
     }
 
-    fn read_word(&self, addr: usize) -> u32 {
+    fn read_word(&self, _addr: usize) -> u32 {
         0
     }
 
-    fn write_word(&mut self, addr: usize, data: u32) {
+    fn write_word(&mut self, _addr: usize, _data: u32) {
     }
 }
-
 
 #[derive(Debug)]
 pub struct VectorMemory {
