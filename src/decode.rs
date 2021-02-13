@@ -54,6 +54,9 @@ pub enum Instruction {
     Bltu(BType),
     Bgeu(BType),
 
+    // J-Type
+    Jal(JType),
+
     // U-Type
     Lui(UType),
     Auipc(UType),
@@ -91,6 +94,12 @@ pub struct BType {
 pub struct UType {
     pub rd: usize,
     pub imm: u32,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct JType {
+    pub rd: u8,
+    pub immediate: u32,
 }
 
 impl RType {
@@ -138,12 +147,26 @@ impl BType {
     }
 }
 
+
 impl UType {
     fn new(instruction: u32) -> Self {
         let imm = instruction.get_bits(UPPER_IMM_RANGE) << 12;
         Self {
             rd: instruction.get_bits(RD_RANGE) as usize,
             imm,
+        }
+    }
+}
+
+impl JType {
+    fn new(instruction: u32) -> Self {
+        let immediate = instruction.get_bits(21..31)
+            + (instruction.get_bits(20..21) << 10)
+            + (instruction.get_bits(12..20) << 11)
+            + (instruction.get_bits(31..32) << 19) << 1;
+        Self {
+            rd: instruction.get_bits(RD_RANGE) as u8,
+            immediate: immediate as u32,
         }
     }
 }
@@ -212,6 +235,10 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::Bgeu(BType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
+      
+        // J-Type
+        0b1101111 => Instruction::Jal(JType::new(instruction)),
+
         // U-Type
         0b0110111 => Instruction::Lui(UType::new(instruction)),
         0b0010111 => Instruction::Auipc(UType::new(instruction)),
@@ -572,6 +599,18 @@ mod tests {
                 imm: 1397,
             }),
             decode(0b0010111_00010_00001_111_01011_1100011)
+        );
+    }
+
+    #[test]
+    fn decode_rv32i_j() {
+        // beq x1, 8018
+        assert_eq!(
+            Instruction::Jal(JType {
+                rd: 1,
+                immediate: 8018,
+            }),
+            decode(0b01_1101010011_0_0000001_00001_1101111)
         );
     }
 
