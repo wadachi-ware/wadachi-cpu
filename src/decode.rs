@@ -24,7 +24,7 @@ pub enum Instruction {
     Or(RType),
     And(RType),
 
-    //I-Type
+    // I-Type
     Addi(IType),
     Slli(IType),
     Slti(IType),
@@ -35,7 +35,12 @@ pub enum Instruction {
     Ori(IType),
     Andi(IType),
 
-    // B-Type
+    // S-Type
+    Sb(SType),
+    Sh(SType),
+    Sw(SType),
+
+    // B-Type*
     Beq(BType),
     Bne(BType),
     Blt(BType),
@@ -50,16 +55,23 @@ pub enum Instruction {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RType {
-    rd: u8,
-    rs1: u8,
-    rs2: u8,
+    pub rd: u8,
+    pub rs1: u8,
+    pub rs2: u8,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IType {
-    rd: u8,
-    rs1: u8,
-    imm: u16,
+    pub rd: u8,
+    pub rs1: u8,
+    pub imm: u16,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SType {
+    pub rs1: u8,
+    pub rs2: u8,
+    pub immediate: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -91,6 +103,18 @@ impl IType {
             rd: instruction.get_bits(RD_RANGE) as u8,
             rs1: instruction.get_bits(RS1_RANGE) as u8,
             imm: instruction.get_bits(IMM_RANGE) as u16,
+        }
+    }
+}
+
+impl SType {
+    fn new(instruction: u32) -> Self {
+        let immediate = instruction.get_bits(7..12)
+            + (instruction.get_bits(25..32) << 5);
+        Self {
+            rs1: instruction.get_bits(RS1_RANGE) as u8,
+            rs2: instruction.get_bits(RS2_RANGE) as u8,
+            immediate: immediate as u16,
         }
     }
 }
@@ -157,6 +181,13 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::Andi(IType::new(instruction)),
             _ => unimplemented!(),
         },
+        // S-Type
+        0b0100011 => match instruction.get_bits(FUNCT3_RANGE) {
+            0b000 => Instruction::Sb(SType::new(instruction)),
+            0b001 => Instruction::Sh(SType::new(instruction)),
+            0b010 => Instruction::Sw(SType::new(instruction)),
+            _ => panic!("Invalid instruction"),
+        },
         // B-Type
         0b1100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Beq(BType::new(instruction)),
@@ -173,7 +204,7 @@ pub fn decode(instruction: u32) -> Instruction {
         _ => unimplemented!(),
     }
 }
-
+ 
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -371,6 +402,39 @@ mod tests {
                 imm: 1,
             }),
             decode(0b0000000_00001_11110_111_01001_0010011)
+        );
+    }
+
+    #[test]
+    fn decode_rv32i_s() {
+        // sb x1, x2, 2899
+        assert_eq!(
+            Instruction::Sb(SType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 2899
+            }),
+            decode(0b1011010_00010_00001_000_10011_0100011)
+        );
+
+        // sh x1, x2, 1397
+        assert_eq!(
+            Instruction::Sh(SType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 1397
+            }),
+            decode(0b0101011_00010_00001_001_10101_0100011)
+        );
+
+        // sw x1, x2, 1397
+        assert_eq!(
+            Instruction::Sw(SType {
+                rs1: 1,
+                rs2: 2,
+                immediate: 1397
+            }),
+            decode(0b0101011_00010_00001_010_10101_0100011)
         );
     }
 
