@@ -109,8 +109,7 @@ impl IType {
 
 impl SType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(7..12)
-            + (instruction.get_bits(25..32) << 5);
+        let immediate = instruction.get_bits(7..12) + (instruction.get_bits(25..32) << 5);
         Self {
             rs1: instruction.get_bits(RS1_RANGE) as u8,
             rs2: instruction.get_bits(RS2_RANGE) as u8,
@@ -121,10 +120,10 @@ impl SType {
 
 impl BType {
     fn new(instruction: u32) -> Self {
-        let imm = instruction.get_bits(8..12)
+        let imm = (instruction.get_bits(8..12)
             + (instruction.get_bits(25..31) << 4)
             + (instruction.get_bits(7..8) << 10)
-            + (instruction.get_bits(31..32) << 11)
+            + (instruction.get_bits(31..32) << 11))
             << 1;
         Self {
             rs1: instruction.get_bits(RS1_RANGE) as u8,
@@ -205,7 +204,7 @@ pub fn decode(instruction: u32) -> Instruction {
         _ => unimplemented!(),
     }
 }
- 
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -441,64 +440,62 @@ mod tests {
 
     #[test]
     fn decode_rv32i_b() {
-        // beq x1, x2, 2899
+        // beq x1, x2, 2048
         assert_eq!(
             Instruction::Beq(BType {
                 rs1: 1,
                 rs2: 2,
-                imm: 2899,
+                imm: 2048,
             }),
             decode(0b0000000_00010_00001_000_00001_1100011)
         );
 
-        // bne x1, x2, 1397
+        // bne x1, x2, 1024
         assert_eq!(
             Instruction::Bne(BType {
                 rs1: 1,
                 rs2: 2,
-                imm: 1397,
+                imm: 1024,
             }),
             decode(0b0100000_00010_00001_001_00000_1100011)
         );
 
-        // blt x1, x2, 1397
+        // blt x1, x2, 1024
         assert_eq!(
             Instruction::Blt(BType {
                 rs1: 1,
                 rs2: 2,
-                imm: 1397,
+                imm: 1024,
             }),
             decode(0b0100000_00010_00001_100_00000_1100011)
         );
 
-        // bge x1, x2, 1397
+        // bge x1, x2, 1024
         assert_eq!(
             Instruction::Bge(BType {
                 rs1: 1,
                 rs2: 2,
-                imm: 2422,
+                imm: 1024,
             }),
             decode(0b0100000_00010_00001_101_00000_1100011)
         );
 
-        // bltu x1, x2, 1397
+        // bltu x1, x2, 1024
         assert_eq!(
             Instruction::Bltu(BType {
                 rs1: 1,
                 rs2: 2,
-                imm: 1397,
-
+                imm: 1024,
             }),
             decode(0b0100000_00010_00001_110_00000_1100011)
         );
 
-        // bgeu x1, x2, 1397
+        // bgeu x1, x2, 1024
         assert_eq!(
             Instruction::Bgeu(BType {
                 rs1: 1,
                 rs2: 2,
-                imm: 1397,
-
+                imm: 1024,
             }),
             decode(0b0100000_00010_00001_111_00000_1100011)
         );
