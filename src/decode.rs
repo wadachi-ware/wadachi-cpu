@@ -55,44 +55,44 @@ pub enum Instruction {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct RType {
-    pub rd: u8,
-    pub rs1: u8,
-    pub rs2: u8,
+    pub rd: usize,
+    pub rs1: usize,
+    pub rs2: usize,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IType {
-    pub rd: u8,
-    pub rs1: u8,
+    pub rd: usize,
+    pub rs1: usize,
     pub imm: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct SType {
-    pub rs1: u8,
-    pub rs2: u8,
+    pub rs1: usize,
+    pub rs2: usize,
     pub immediate: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BType {
-    rs1: u8,
-    rs2: u8,
+    rs1: usize,
+    rs2: usize,
     imm: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct UType {
-    pub rd: u8,
+    pub rd: usize,
     pub imm: u32,
 }
 
 impl RType {
     fn new(instruction: u32) -> Self {
         Self {
-            rd: instruction.get_bits(RD_RANGE) as u8,
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
-            rs2: instruction.get_bits(RS2_RANGE) as u8,
+            rd: instruction.get_bits(RD_RANGE) as usize,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
+            rs2: instruction.get_bits(RS2_RANGE) as usize,
         }
     }
 }
@@ -100,8 +100,8 @@ impl RType {
 impl IType {
     fn new(instruction: u32) -> Self {
         Self {
-            rd: instruction.get_bits(RD_RANGE) as u8,
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
+            rd: instruction.get_bits(RD_RANGE) as usize,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
             imm: instruction.get_bits(IMM_RANGE) as u16,
         }
     }
@@ -109,11 +109,10 @@ impl IType {
 
 impl SType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(7..12)
-            + (instruction.get_bits(25..32) << 5);
+        let immediate = instruction.get_bits(7..12) + (instruction.get_bits(25..32) << 5);
         Self {
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
-            rs2: instruction.get_bits(RS2_RANGE) as u8,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
+            rs2: instruction.get_bits(RS2_RANGE) as usize,
             immediate: immediate as u16,
         }
     }
@@ -126,8 +125,8 @@ impl BType {
             + (instruction.get_bits(7..8) << 10)
             + (instruction.get_bits(31..32) << 11);
         Self {
-            rs1: instruction.get_bits(RS1_RANGE) as u8,
-            rs2: instruction.get_bits(RS2_RANGE) as u8,
+            rs1: instruction.get_bits(RS1_RANGE) as usize,
+            rs2: instruction.get_bits(RS2_RANGE) as usize,
             imm: imm as u16,
         }
     }
@@ -137,7 +136,7 @@ impl UType {
     fn new(instruction: u32) -> Self {
         let imm = instruction.get_bits(UPPER_IMM_RANGE) << 12;
         Self {
-            rd: instruction.get_bits(RD_RANGE) as u8,
+            rd: instruction.get_bits(RD_RANGE) as usize,
             imm,
         }
     }
@@ -204,7 +203,7 @@ pub fn decode(instruction: u32) -> Instruction {
         _ => unimplemented!(),
     }
 }
- 
+
 #[cfg(test)]
 mod tests {
     use super::*;

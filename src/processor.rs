@@ -20,12 +20,11 @@ impl Processor {
     fn read_reg(&self, idx: usize) -> u32 {
         if idx == 0 {
             0
-        }
-        else {
+        } else {
             self.regs[idx]
         }
     }
-    
+
     fn write_reg(&mut self, idx: usize, val: u32) {
         if idx != 0 {
             self.regs[idx] = val;
@@ -52,73 +51,73 @@ impl Processor {
 
 impl Processor {
     fn inst_add(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
-        let v = lv.wrapping_add(rv); 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        let v = lv.wrapping_add(rv);
+        self.write_reg(args.rd, v);
     }
 
     fn inst_sub(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
-        let v = lv.wrapping_sub(rv); 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        let v = lv.wrapping_sub(rv);
+        self.write_reg(args.rd, v);
     }
 
     fn inst_sll(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
-        let v = lv << rv; 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        let v = lv << rv;
+        self.write_reg(args.rd, v);
     }
 
     fn inst_slt(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize) as i32;
-        let rv = self.read_reg(args.rs2 as usize) as i32;
-        let v = (lv < rv) as u32; 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1) as i32;
+        let rv = self.read_reg(args.rs2) as i32;
+        let v = (lv < rv) as u32;
+        self.write_reg(args.rd, v);
     }
 
     fn inst_sltu(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
-        let v = (lv < rv) as u32; 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        let v = (lv < rv) as u32;
+        self.write_reg(args.rd, v);
     }
 
     fn inst_xor(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
-        let v = lv ^ rv; 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        let v = lv ^ rv;
+        self.write_reg(args.rd, v);
     }
 
     fn inst_srl(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
-        let v = lv >> rv; 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        let v = lv >> rv;
+        self.write_reg(args.rd, v);
     }
 
     fn inst_sra(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize) as i32;
-        let rv = self.read_reg(args.rs2 as usize);
-        let v = (lv >> rv) as u32; 
-        self.write_reg(args.rd as usize, v);
+        let lv = self.read_reg(args.rs1) as i32;
+        let rv = self.read_reg(args.rs2);
+        let v = (lv >> rv) as u32;
+        self.write_reg(args.rd, v);
     }
 
     fn inst_or(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
         let v = lv | rv;
-        self.write_reg(args.rd as usize, v);
+        self.write_reg(args.rd, v);
     }
 
     fn inst_and(&mut self, args: &RType) {
-        let lv = self.read_reg(args.rs1 as usize);
-        let rv = self.read_reg(args.rs2 as usize);
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
         let v = lv & rv;
-        self.write_reg(args.rd as usize, v);
+        self.write_reg(args.rd, v);
     }
 }
 
@@ -132,7 +131,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_add() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -150,7 +153,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_sub() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -168,7 +175,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_sll() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -186,7 +197,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_slt() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -214,7 +229,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_sltu() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -242,7 +261,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_xor() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -260,7 +283,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_srl() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -278,7 +305,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_sra() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -296,7 +327,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_and() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 
@@ -314,7 +349,11 @@ mod tests {
     #[test]
     fn calc_rv32i_r_or() {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
-        let args: RType = RType { rs1: 1, rs2: 2, rd: 3 };
+        let args: RType = RType {
+            rs1: 1,
+            rs2: 2,
+            rd: 3,
+        };
 
         let mut proc = Processor::new(memory);
 

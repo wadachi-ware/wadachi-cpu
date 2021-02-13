@@ -17,13 +17,12 @@ impl Memory for EmptyMemory {
         0
     }
 
-    fn write_word(&mut self, _addr: usize, _data: u32) {
-    }
+    fn write_word(&mut self, _addr: usize, _data: u32) {}
 }
 
 #[derive(Debug)]
 pub struct VectorMemory {
-    memory: Vec<u8>
+    memory: Vec<u8>,
 }
 
 impl VectorMemory {
@@ -31,41 +30,39 @@ impl VectorMemory {
         let mut memory = Vec::with_capacity(size);
         memory.resize(size, 0);
 
-        Self {
-            memory
-        }
+        Self { memory }
     }
 
     /// read big-endian word located at *addr*
     fn read_bw(&self, addr: usize) -> u32 {
-        (self.memory[addr] as u32) << 24 |
-        (self.memory[addr+1] as u32) << 16 |
-        (self.memory[addr+2] as u32) << 8 |
-        (self.memory[addr+3] as u32)
+        (self.memory[addr] as u32) << 24
+            | (self.memory[addr + 1] as u32) << 16
+            | (self.memory[addr + 2] as u32) << 8
+            | (self.memory[addr + 3] as u32)
     }
 
     /// read little-endian word located at *addr*
     fn read_lw(&self, addr: usize) -> u32 {
-        (self.memory[addr] as u32) |
-        (self.memory[addr+1] as u32) << 8 |
-        (self.memory[addr+2] as u32) << 16 |
-        (self.memory[addr+3] as u32) << 24
+        (self.memory[addr] as u32)
+            | (self.memory[addr + 1] as u32) << 8
+            | (self.memory[addr + 2] as u32) << 16
+            | (self.memory[addr + 3] as u32) << 24
     }
 
     /// write big-endian word at *addr*
     fn write_bw(&mut self, addr: usize, val: u32) {
         self.memory[addr] = (val >> 24) as u8;
-        self.memory[addr+1] = (val >> 16) as u8;
-        self.memory[addr+2] = (val >> 8) as u8;
-        self.memory[addr+3] = val as u8;
+        self.memory[addr + 1] = (val >> 16) as u8;
+        self.memory[addr + 2] = (val >> 8) as u8;
+        self.memory[addr + 3] = val as u8;
     }
-    
+
     /// write little-endian word at *addr*
     fn write_lw(&mut self, addr: usize, val: u32) {
         self.memory[addr] = val as u8;
-        self.memory[addr+1] = (val >> 8) as u8;
-        self.memory[addr+2] = (val >> 16) as u8;
-        self.memory[addr+3] = (val >> 24) as u8;
+        self.memory[addr + 1] = (val >> 8) as u8;
+        self.memory[addr + 2] = (val >> 16) as u8;
+        self.memory[addr + 3] = (val >> 24) as u8;
     }
 
     /// read an instruction located at addr
@@ -95,9 +92,7 @@ impl Memory for VectorMemory {
 
 impl From<Vec<u8>> for VectorMemory {
     fn from(memory: Vec<u8>) -> Self {
-        Self {
-            memory
-        }
+        Self { memory }
     }
 }
 
