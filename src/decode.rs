@@ -40,6 +40,12 @@ pub enum Instruction {
     Lw(IType),
     Lbu(IType),
     Lhu(IType),
+    Csrrw(IType),
+    Csrrs(IType),
+    Csrrc(IType),
+    Csrrwi(IType),
+    Csrrsi(IType),
+    Csrrci(IType),
 
     // S-Type
     Sb(SType),
@@ -80,7 +86,7 @@ pub struct IType {
 pub struct SType {
     pub rs1: usize,
     pub rs2: usize,
-    pub immediate: u16,
+    pub imm: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -99,7 +105,7 @@ pub struct UType {
 #[derive(Debug, PartialEq, Eq)]
 pub struct JType {
     pub rd: u8,
-    pub immediate: u32,
+    pub imm: u32,
 }
 
 impl RType {
@@ -124,11 +130,11 @@ impl IType {
 
 impl SType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(7..12) + (instruction.get_bits(25..32) << 5);
+        let imm = instruction.get_bits(7..12) + (instruction.get_bits(25..32) << 5);
         Self {
             rs1: instruction.get_bits(RS1_RANGE) as usize,
             rs2: instruction.get_bits(RS2_RANGE) as usize,
-            immediate: immediate as u16,
+            imm: imm as u16,
         }
     }
 }
@@ -148,7 +154,6 @@ impl BType {
     }
 }
 
-
 impl UType {
     fn new(instruction: u32) -> Self {
         let imm = instruction.get_bits(UPPER_IMM_RANGE) << 12;
@@ -161,13 +166,14 @@ impl UType {
 
 impl JType {
     fn new(instruction: u32) -> Self {
-        let immediate = instruction.get_bits(21..31)
+        let imm = instruction.get_bits(21..31)
             + (instruction.get_bits(20..21) << 10)
             + (instruction.get_bits(12..20) << 11)
-            + (instruction.get_bits(31..32) << 19) << 1;
+            + (instruction.get_bits(31..32) << 19)
+            << 1;
         Self {
             rd: instruction.get_bits(RD_RANGE) as u8,
-            immediate: immediate as u32,
+            imm: imm as u32,
         }
     }
 }
@@ -194,6 +200,7 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::And(RType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
+
         // I Type
         0b1100111 => Instruction::Jalr(IType::new(instruction)),
         0b0010011 => match instruction.get_bits(FUNCT3_RANGE) {
@@ -219,6 +226,16 @@ pub fn decode(instruction: u32) -> Instruction {
             0b101 => Instruction::Lhu(IType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
+        0b1110011 => match instruction.get_bits(FUNCT3_RANGE) {
+            0b001 => Instruction::Csrrw(IType::new(instruction)),
+            0b010 => Instruction::Csrrs(IType::new(instruction)),
+            0b011 => Instruction::Csrrc(IType::new(instruction)),
+            0b101 => Instruction::Csrrwi(IType::new(instruction)),
+            0b110 => Instruction::Csrrsi(IType::new(instruction)),
+            0b111 => Instruction::Csrrci(IType::new(instruction)),
+            _ => panic!("Invalid instruction"),
+        },
+
         // S-Type
         0b0100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Sb(SType::new(instruction)),
@@ -226,6 +243,7 @@ pub fn decode(instruction: u32) -> Instruction {
             0b010 => Instruction::Sw(SType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
+
         // B-Type
         0b1100011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Beq(BType::new(instruction)),
@@ -236,7 +254,7 @@ pub fn decode(instruction: u32) -> Instruction {
             0b111 => Instruction::Bgeu(BType::new(instruction)),
             _ => panic!("Invalid instruction"),
         },
-      
+
         // J-Type
         0b1101111 => Instruction::Jal(JType::new(instruction)),
 
@@ -505,6 +523,66 @@ mod tests {
             }),
             decode(0b0000000_00001_11110_101_01001_0000011)
         );
+
+        // csrrw x1, 1024, x2
+        assert_eq!(
+            Instruction::Csrrw(IType {
+                rd: 1,
+                rs1: 2,
+                imm: 1024
+            }),
+            decode(0b0100000_00000_00010_001_00001_1110011)
+        );
+
+        // csrrs x1, 1024, x2
+        assert_eq!(
+            Instruction::Csrrs(IType {
+                rd: 1,
+                rs1: 2,
+                imm: 1024
+            }),
+            decode(0b0100000_00000_00010_010_00001_1110011)
+        );
+
+        // csrrc x1, 1024, x2
+        assert_eq!(
+            Instruction::Csrrc(IType {
+                rd: 1,
+                rs1: 2,
+                imm: 1024
+            }),
+            decode(0b0100000_00000_00010_011_00001_1110011)
+        );
+
+        // csrrwi x1, 1024, x2
+        assert_eq!(
+            Instruction::Csrrwi(IType {
+                rd: 1,
+                rs1: 2,
+                imm: 1024
+            }),
+            decode(0b0100000_00000_00010_101_00001_1110011)
+        );
+
+        // csrrsi x1, 1024, x2
+        assert_eq!(
+            Instruction::Csrrsi(IType {
+                rd: 1,
+                rs1: 2,
+                imm: 1024
+            }),
+            decode(0b0100000_00000_00010_110_00001_1110011)
+        );
+
+        // csrrci x1, 1024, x2
+        assert_eq!(
+            Instruction::Csrrci(IType {
+                rd: 1,
+                rs1: 2,
+                imm: 1024
+            }),
+            decode(0b0100000_00000_00010_111_00001_1110011)
+        );
     }
 
     #[test]
@@ -514,7 +592,7 @@ mod tests {
             Instruction::Sb(SType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 2899
+                imm: 2899
             }),
             decode(0b1011010_00010_00001_000_10011_0100011)
         );
@@ -524,7 +602,7 @@ mod tests {
             Instruction::Sh(SType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397
             }),
             decode(0b0101011_00010_00001_001_10101_0100011)
         );
@@ -534,7 +612,7 @@ mod tests {
             Instruction::Sw(SType {
                 rs1: 1,
                 rs2: 2,
-                immediate: 1397
+                imm: 1397
             }),
             decode(0b0101011_00010_00001_010_10101_0100011)
         );
@@ -607,10 +685,7 @@ mod tests {
     fn decode_rv32i_j() {
         // beq x1, 8018
         assert_eq!(
-            Instruction::Jal(JType {
-                rd: 1,
-                immediate: 8018,
-            }),
+            Instruction::Jal(JType { rd: 1, imm: 8018 }),
             decode(0b01_1101010011_0_0000001_00001_1101111)
         );
     }
