@@ -105,7 +105,7 @@ pub struct UType {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct JType {
-    pub rd: u8,
+    pub rd: usize,
     pub imm: u32,
 }
 
@@ -173,7 +173,7 @@ impl JType {
             + (instruction.get_bits(31..32) << 19)
             << 1;
         Self {
-            rd: instruction.get_bits(RD_RANGE) as u8,
+            rd: instruction.get_bits(RD_RANGE) as usize,
             imm: imm as u32,
         }
     }
@@ -203,7 +203,13 @@ pub fn decode(instruction: u32) -> Result<Instruction, Exception> {
         },
 
         // I Type
-        0b1100111 => Instruction::Jalr(IType::new(instruction)),
+        0b1100111 => {
+            let decoded = IType::new(instruction);
+            if decoded.imm % 4 != 0 {
+                return Err(Exception::InstructionAddressMisaligned);
+            }
+            Instruction::Jalr(decoded)
+        }
         0b0010011 => match instruction.get_bits(FUNCT3_RANGE) {
             0b000 => Instruction::Addi(IType::new(instruction)),
             0b001 => Instruction::Slli(IType::new(instruction)),
@@ -257,7 +263,14 @@ pub fn decode(instruction: u32) -> Result<Instruction, Exception> {
         },
 
         // J-Type
-        0b1101111 => Instruction::Jal(JType::new(instruction)),
+        0b1101111 => {
+            let decoded = JType::new(instruction);
+            // Target address should be aligned 4byte boundary.
+            if decoded.imm % 4 != 0 {
+                return Err(Exception::InstructionAddressMisaligned);
+            }
+            Instruction::Jal(decoded)
+        }
 
         // U-Type
         0b0110111 => Instruction::Lui(UType::new(instruction)),
@@ -590,6 +603,16 @@ mod tests {
     }
 
     #[test]
+    fn decode_invalid_rv32i_i() -> Result<(), Exception> {
+        // jalr x1, x9, 65
+        assert_eq!(
+            Err(Exception::InstructionAddressMisaligned),
+            decode(0b0000010_00001_01001_000_00001_1100111)
+        );
+        Ok(())
+    }
+
+    #[test]
     fn decode_rv32i_s() -> Result<(), Exception> {
         // sb x1, x2, 2899
         assert_eq!(
@@ -689,10 +712,20 @@ mod tests {
 
     #[test]
     fn decode_rv32i_j() -> Result<(), Exception> {
-        // beq x1, 8018
+        // jal x1, 529408
         assert_eq!(
-            Instruction::Jal(JType { rd: 1, imm: 8018 }),
-            decode(0b01_1101010011_0_0000001_00001_1101111)?
+            Instruction::Jal(JType { rd: 1, imm: 529408 }),
+            decode(0b01000000000010000001_00001_1101111)?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn decode_invalid_rv32i_j() -> Result<(), Exception> {
+        // jal x1, 2
+        assert_eq!(
+            Err(Exception::InstructionAddressMisaligned),
+            decode(0b00000000001000000000_00001_1101111)
         );
         Ok(())
     }
