@@ -531,6 +531,12 @@ mod tests {
         proc.inst_jalr(&args);
         assert_eq!(proc.read_reg(2), 0x1238);
         assert_eq!(proc.pc, 0x68a);
+
+        proc.pc = 0x1234;
+        proc.write_reg(1, 0x456);
+        proc.inst_jalr(&args);
+        assert_eq!(proc.read_reg(2), 0x1238);
+        assert_eq!(proc.pc, 0x578);
     }
 
     #[test]
@@ -713,6 +719,29 @@ mod tests {
 
         let mut proc = Processor::new(memory);
         proc.write_reg(1, 4);
+
+        proc.inst_lb(&args);
+        assert_eq!(proc.read_reg(2), 0xffffff80);
+
+        proc.inst_lh(&args);
+        assert_eq!(proc.read_reg(2), 0xffff8080);
+
+        proc.inst_lw(&args);
+        assert_eq!(proc.read_reg(2), 0x08088080);
+
+        proc.inst_lbu(&args);
+        assert_eq!(proc.read_reg(2), 0x80);
+
+        proc.inst_lhu(&args);
+        assert_eq!(proc.read_reg(2), 0x8080);
+
+        let args: IType = IType {
+            rs1: 1,
+            rd: 2,
+            imm: 0x4,
+        };
+
+        proc.write_reg(1, 0);
 
         proc.inst_lb(&args);
         assert_eq!(proc.read_reg(2), 0xffffff80);
