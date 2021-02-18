@@ -1,3 +1,4 @@
+use crate::exception::Exception;
 use crate::memory::Memory;
 
 use crate::decode::{decode, Instruction, RType, IType};
@@ -31,11 +32,10 @@ impl Processor {
         }
     }
 
-    fn tick(&mut self) {
+    fn tick(&mut self) -> Result<(), Exception> {
         let mut skip_inc = false;
-
         let raw_inst = self.mem.read_inst(self.pc as usize);
-        match decode(raw_inst) {
+        match decode(raw_inst)? {
             Instruction::Add(args) => self.inst_add(&args),
             Instruction::Sub(args) => self.inst_sub(&args),
             Instruction::Sll(args) => self.inst_sll(&args),
@@ -73,6 +73,7 @@ impl Processor {
         if !skip_inc {
             self.pc += 4;
         }
+        Ok(())
     }
 }
 
