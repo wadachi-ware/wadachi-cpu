@@ -1,3 +1,4 @@
+use crate::exception::Exception;
 use crate::memory::Memory;
 
 use crate::decode::{decode, Instruction, RType};
@@ -31,9 +32,9 @@ impl Processor {
         }
     }
 
-    fn tick(&mut self) {
+    fn tick(&mut self) -> Result<(), Exception> {
         let raw_inst = self.mem.read_inst(self.pc as usize);
-        match decode(raw_inst) {
+        match decode(raw_inst)? {
             Instruction::Add(args) => self.inst_add(&args),
             Instruction::Sub(args) => self.inst_sub(&args),
             Instruction::Sll(args) => self.inst_sll(&args),
@@ -46,6 +47,7 @@ impl Processor {
             Instruction::And(args) => self.inst_and(&args),
             _ => panic!("unimplemented"),
         }
+        Ok(())
     }
 }
 
