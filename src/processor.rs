@@ -1,7 +1,7 @@
 use crate::exception::Exception;
 use crate::memory::Memory;
 
-use crate::decode::{decode, Instruction, RType, IType};
+use crate::decode::{decode, IType, Instruction, RType};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -10,7 +10,7 @@ pub struct Processor {
 }
 
 impl Processor {
-    fn new(memory: Box<dyn Memory>) -> Self {
+    pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
             regs: [0; 32],
             pc: 0,
@@ -32,7 +32,11 @@ impl Processor {
         }
     }
 
-    fn tick(&mut self) -> Result<(), Exception> {
+    pub fn tick(&mut self) -> Result<(), Exception> {
+        if self.pc + 4 > self.mem.len() as u32 {
+            return Ok(())
+        }
+
         let mut skip_inc = false;
         let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
@@ -50,7 +54,7 @@ impl Processor {
             Instruction::Jalr(args) => {
                 self.inst_jalr(&args);
                 skip_inc = true;
-            },
+            }
             Instruction::Addi(args) => self.inst_addi(&args),
             Instruction::Slli(args) => self.inst_slli(&args),
             Instruction::Slti(args) => self.inst_slti(&args),
@@ -66,7 +70,6 @@ impl Processor {
             Instruction::Lbu(args) => self.inst_lbu(&args),
             Instruction::Lhu(args) => self.inst_lhu(&args),
 
-
             _ => panic!("unimplemented"),
         }
 
@@ -81,8 +84,7 @@ impl Processor {
     const fn sign_extend(&self, val: u16) -> u32 {
         if val & 0x800 != 0 {
             (val as u32) | 0xfffff000
-        }
-        else {
+        } else {
             val as u32
         }
     }
@@ -526,7 +528,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.pc = 0x1234;
         proc.write_reg(1, 0x567);
         proc.inst_jalr(&args);
@@ -550,7 +552,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x567);
         proc.inst_addi(&args);
         assert_eq!(proc.read_reg(2), 0x68a);
@@ -566,7 +568,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_slli(&args);
         assert_eq!(proc.read_reg(2), 0x2b3c0);
@@ -582,7 +584,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x567);
         proc.inst_slti(&args);
         assert_eq!(proc.read_reg(2), 0x0);
@@ -606,7 +608,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_sltiu(&args);
         assert_eq!(proc.read_reg(2), 0x0);
@@ -630,7 +632,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_xori(&args);
         assert_eq!(proc.read_reg(2), 0x575b);
@@ -646,7 +648,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_srli(&args);
         assert_eq!(proc.read_reg(2), 0xacf);
@@ -666,7 +668,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_srai(&args);
         assert_eq!(proc.read_reg(2), 0xacf);
@@ -686,7 +688,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_ori(&args);
         assert_eq!(proc.read_reg(2), 0x577b);
@@ -702,7 +704,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_andi(&args);
         assert_eq!(proc.read_reg(2), 0x020);
