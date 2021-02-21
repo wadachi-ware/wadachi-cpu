@@ -9,6 +9,7 @@ pub struct Processor {
 }
 
 impl Processor {
+    /// Instruction execution starts from the `pc`.
     pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
             regs: [0; 32],
@@ -17,16 +18,24 @@ impl Processor {
         }
     }
 
-    /// Load a program, which is an array of `u32` integer, in the `address`.
-    pub fn load(&mut self, address: usize, program: Vec<u32>) {
-        if address % 4 != 0 {
+    /// Set program counter to start instruction execution.
+    pub fn set_pc(&mut self, pc: u32) {
+        if pc % 4 != 0 {
             // If this rule is broken, instruction execution will never be done properly.
             // And this is not during instruction execution, so returning `Exception` is
             // inappropriate.
             panic!("Instruction address must be aligned to a 4byte boundary");
         }
+        self.pc = pc;
+    }
+
+    /// Load a program, which is an array of `u32` integer, in the `address`.
+    pub fn load(&mut self, address: u32, program: Vec<u32>) {
+        if address % 4 != 0 {
+            panic!("Instruction address must be aligned to a 4byte boundary");
+        }
         for (index, instruction) in program.iter().enumerate() {
-            self.mem.write_inst(address + index * 4, *instruction);
+            self.mem.write_inst(address as usize + index * 4, *instruction);
         }
     }
 

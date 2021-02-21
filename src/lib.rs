@@ -17,11 +17,13 @@ mod tests {
         00281813 slli a6,a6,0x2
         010787b3 add a5,a5,a6
         */
-        let memory = vec![0; 20];
+        let memory = vec![0; 24];
         let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let start_address = 4;
         let mut processor = Processor::new(memory);
+        processor.set_pc(start_address);
         processor.load(
-            0,
+            start_address,
             vec![0x00178793, 0x00278793, 0x00380813, 0x00281813, 0x010787b3],
         );
         processor.execute();
