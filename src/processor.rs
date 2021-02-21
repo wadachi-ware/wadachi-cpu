@@ -35,7 +35,8 @@ impl Processor {
             panic!("Instruction address must be aligned to a 4byte boundary");
         }
         for (index, instruction) in program.iter().enumerate() {
-            self.mem.write_inst(address as usize + index * 4, *instruction);
+            self.mem
+                .write_inst(address as usize + index * 4, *instruction);
         }
     }
 
