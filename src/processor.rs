@@ -82,7 +82,7 @@ impl Processor {
 }
 
 impl Processor {
-    const fn sign_extend(&self, val: u16) -> u32 {
+    const fn sign_extend(val: u16) -> u32 {
         if val & 0x800 != 0 {
             (val as u32) | 0xfffff000
         } else {
@@ -162,7 +162,7 @@ impl Processor {
 
     fn inst_jalr(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) & 0xffff_fffe;
         self.write_reg(args.rd, self.pc + 4);
         self.pc = addr;
@@ -170,7 +170,7 @@ impl Processor {
 
     fn inst_addi(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1) as i32;
-        let rv = self.sign_extend(args.imm) as i32;
+        let rv = Self::sign_extend(args.imm) as i32;
         let v = (lv + rv) as u32;
         self.write_reg(args.rd, v);
     }
@@ -184,21 +184,21 @@ impl Processor {
 
     fn inst_slti(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1) as i32;
-        let rv = self.sign_extend(args.imm) as i32;
+        let rv = Self::sign_extend(args.imm) as i32;
         let v = (lv < rv) as u32;
         self.write_reg(args.rd, v);
     }
 
     fn inst_sltiu(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = (lv < rv) as u32;
         self.write_reg(args.rd, v);
     }
 
     fn inst_xori(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = lv ^ rv;
         self.write_reg(args.rd, v);
     }
@@ -219,21 +219,21 @@ impl Processor {
 
     fn inst_ori(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = lv | rv;
         self.write_reg(args.rd, v);
     }
 
     fn inst_andi(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = lv & rv;
         self.write_reg(args.rd, v);
     }
 
     fn inst_lb(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = (self.mem.read_byte(addr) as i8) as u32;
         self.write_reg(args.rd, v);
@@ -241,7 +241,7 @@ impl Processor {
 
     fn inst_lh(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = (self.mem.read_halfword(addr) as i16) as u32;
         self.write_reg(args.rd, v);
@@ -249,7 +249,7 @@ impl Processor {
 
     fn inst_lw(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = self.mem.read_word(addr);
         self.write_reg(args.rd, v);
@@ -257,7 +257,7 @@ impl Processor {
 
     fn inst_lbu(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = self.mem.read_byte(addr) as u32;
         self.write_reg(args.rd, v);
@@ -265,7 +265,7 @@ impl Processor {
 
     fn inst_lhu(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = self.mem.read_halfword(addr) as u32;
         self.write_reg(args.rd, v);
@@ -273,7 +273,7 @@ impl Processor {
 
     fn inst_sb(&mut self, args: &SType) {
         let base = self.read_reg(args.rs1);
-        let offset = self.sign_extend(args.imm);
+        let offset = Self::sign_extend(args.imm);
         let addr = (base + offset) as usize;
         // Write least significant byte in rs2.
         let data = self.read_reg(args.rs2) & 0xff;
