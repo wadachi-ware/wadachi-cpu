@@ -1,7 +1,7 @@
 use crate::exception::Exception;
 use crate::memory::Memory;
 
-use crate::decode::{decode, Instruction, RType, IType};
+use crate::decode::{decode, IType, Instruction, RType, SType};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -10,7 +10,7 @@ pub struct Processor {
 }
 
 impl Processor {
-    fn new(memory: Box<dyn Memory>) -> Self {
+    pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
             regs: [0; 32],
             pc: 0,
@@ -32,10 +32,11 @@ impl Processor {
         }
     }
 
-    fn tick(&mut self) -> Result<(), Exception> {
+    pub fn tick(&mut self) -> Result<(), Exception> {
         let mut skip_inc = false;
         let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
+            // R-Type
             Instruction::Add(args) => self.inst_add(&args),
             Instruction::Sub(args) => self.inst_sub(&args),
             Instruction::Sll(args) => self.inst_sll(&args),
@@ -47,10 +48,11 @@ impl Processor {
             Instruction::Or(args) => self.inst_or(&args),
             Instruction::And(args) => self.inst_and(&args),
 
+            // I-Type
             Instruction::Jalr(args) => {
                 self.inst_jalr(&args);
                 skip_inc = true;
-            },
+            }
             Instruction::Addi(args) => self.inst_addi(&args),
             Instruction::Slli(args) => self.inst_slli(&args),
             Instruction::Slti(args) => self.inst_slti(&args),
@@ -66,6 +68,8 @@ impl Processor {
             Instruction::Lbu(args) => self.inst_lbu(&args),
             Instruction::Lhu(args) => self.inst_lhu(&args),
 
+            // S-Type
+            Instruction::Sb(args) => self.inst_sb(&args),
 
             _ => panic!("unimplemented"),
         }
@@ -81,8 +85,7 @@ impl Processor {
     const fn sign_extend(&self, val: u16) -> u32 {
         if val & 0x800 != 0 {
             (val as u32) | 0xfffff000
-        }
-        else {
+        } else {
             val as u32
         }
     }
@@ -267,13 +270,21 @@ impl Processor {
         let v = self.mem.read_halfword(addr) as u32;
         self.write_reg(args.rd, v);
     }
+
+    fn inst_sb(&mut self, args: &SType) {
+        let base = self.read_reg(args.rs1);
+        let offset = self.sign_extend(args.imm);
+        let addr = (base + offset) as usize;
+        // Write least significant byte in rs2.
+        let data = self.read_reg(args.rs2) & 0xff;
+        self.mem.write_word(addr, data);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use crate::decode::RType;
     use crate::memory::{EmptyMemory, VectorMemory};
 
     #[test]
@@ -526,8 +537,8 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
         proc.pc = 0x1234;
+
         proc.write_reg(1, 0x567);
         proc.inst_jalr(&args);
         assert_eq!(proc.read_reg(2), 0x1238);
@@ -550,7 +561,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x567);
         proc.inst_addi(&args);
         assert_eq!(proc.read_reg(2), 0x68a);
@@ -566,7 +577,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_slli(&args);
         assert_eq!(proc.read_reg(2), 0x2b3c0);
@@ -582,7 +593,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x567);
         proc.inst_slti(&args);
         assert_eq!(proc.read_reg(2), 0x0);
@@ -606,7 +617,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_sltiu(&args);
         assert_eq!(proc.read_reg(2), 0x0);
@@ -630,7 +641,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_xori(&args);
         assert_eq!(proc.read_reg(2), 0x575b);
@@ -646,7 +657,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_srli(&args);
         assert_eq!(proc.read_reg(2), 0xacf);
@@ -666,7 +677,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_srai(&args);
         assert_eq!(proc.read_reg(2), 0xacf);
@@ -686,7 +697,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_ori(&args);
         assert_eq!(proc.read_reg(2), 0x577b);
@@ -702,7 +713,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_andi(&args);
         assert_eq!(proc.read_reg(2), 0x020);
@@ -758,5 +769,22 @@ mod tests {
 
         proc.inst_lhu(&args);
         assert_eq!(proc.read_reg(2), 0x8080);
+    }
+
+    #[test]
+    fn calc_rv32i_i_sb() {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = SType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x2,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x2);
+        proc.write_reg(2, 0x180);
+        proc.inst_sb(&args);
+        assert_eq!(proc.mem.read_byte(4), 0x80);
     }
 }
