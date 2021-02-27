@@ -70,6 +70,7 @@ impl Processor {
             Instruction::Beq(args) => self.inst_beq(&args)?,
             Instruction::Bne(args) => self.inst_bne(&args)?,
             Instruction::Blt(args) => self.inst_blt(&args)?,
+            Instruction::Bge(args) => self.inst_bge(&args)?,
 
             _ => panic!("unimplemented"),
         }
@@ -305,6 +306,12 @@ impl Processor {
         let lv = self.read_reg(args.rs1) as i32;
         let rv = self.read_reg(args.rs2) as i32;
         self.branch_inner(lv < rv, args.imm)
+    }
+
+    fn inst_bge(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1) as i32;
+        let rv = self.read_reg(args.rs2) as i32;
+        self.branch_inner(lv >= rv, args.imm)
     }
 }
 
@@ -867,6 +874,30 @@ mod tests {
         // Compare register values as signed value.
         proc.inst_blt(&args)?;
         assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_bgt() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as signed value.
+        proc.inst_bge(&args)?;
+        assert_eq!(proc.pc, 0x80);
+
+        proc.write_reg(1, 0xffffff80);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as signed value.
+        proc.inst_bge(&args)?;
+        assert_eq!(proc.pc, 0x100);
         Ok(())
     }
 }
