@@ -71,6 +71,7 @@ impl Processor {
             // S-Type
             Instruction::Sb(args) => self.inst_sb(&args),
             Instruction::Sh(args) => self.inst_sh(&args),
+            Instruction::Sw(args) => self.inst_sw(&args),
 
             _ => panic!("unimplemented"),
         }
@@ -287,6 +288,15 @@ impl Processor {
         let addr = (base + offset) as usize;
         // Write least significant 2 byte in rs2.
         let data = self.read_reg(args.rs2) & 0xffff;
+        self.mem.write_word(addr, data);
+    }
+
+    fn inst_sw(&mut self, args: &SType) {
+        let base = self.read_reg(args.rs1);
+        let offset = Self::sign_extend(args.imm);
+        let addr = (base + offset) as usize;
+        // Write least significant 4 byte in rs2.
+        let data = self.read_reg(args.rs2);
         self.mem.write_word(addr, data);
     }
 }
@@ -813,5 +823,22 @@ mod tests {
         proc.write_reg(2, 0x18080);
         proc.inst_sh(&args);
         assert_eq!(proc.mem.read_halfword(4), 0x8080);
+    }
+
+    #[test]
+    fn calc_rv32i_i_sw() {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = SType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x2,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x2);
+        proc.write_reg(2, 0x80808080);
+        proc.inst_sw(&args);
+        assert_eq!(proc.mem.read_word(4), 0x80808080);
     }
 }
