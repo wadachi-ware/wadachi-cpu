@@ -51,8 +51,7 @@ impl VectorMemory {
 
     /// read little-endian half word located at *addr*
     fn read_lh(&self, addr: usize) -> u16 {
-        (self.memory[addr] as u16)
-            | (self.memory[addr + 1] as u16) << 8
+        (self.memory[addr] as u16) | (self.memory[addr + 1] as u16) << 8
     }
 
     /// read big-endian word located at *addr*

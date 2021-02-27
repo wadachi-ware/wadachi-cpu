@@ -1,7 +1,7 @@
 use crate::exception::Exception;
 use crate::memory::Memory;
 
-use crate::decode::{decode, Instruction, RType, IType};
+use crate::decode::{decode, BType, IType, Instruction, RType};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -10,7 +10,7 @@ pub struct Processor {
 }
 
 impl Processor {
-    fn new(memory: Box<dyn Memory>) -> Self {
+    pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
             regs: [0; 32],
             pc: 0,
@@ -32,7 +32,7 @@ impl Processor {
         }
     }
 
-    fn tick(&mut self) -> Result<(), Exception> {
+    pub fn tick(&mut self) -> Result<(), Exception> {
         let mut skip_inc = false;
         let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
@@ -50,7 +50,7 @@ impl Processor {
             Instruction::Jalr(args) => {
                 self.inst_jalr(&args);
                 skip_inc = true;
-            },
+            }
             Instruction::Addi(args) => self.inst_addi(&args),
             Instruction::Slli(args) => self.inst_slli(&args),
             Instruction::Slti(args) => self.inst_slti(&args),
@@ -66,6 +66,8 @@ impl Processor {
             Instruction::Lbu(args) => self.inst_lbu(&args),
             Instruction::Lhu(args) => self.inst_lhu(&args),
 
+            // B-Type
+            Instruction::Beq(args) => self.inst_beq(&args)?,
 
             _ => panic!("unimplemented"),
         }
@@ -81,8 +83,7 @@ impl Processor {
     const fn sign_extend(&self, val: u16) -> u32 {
         if val & 0x800 != 0 {
             (val as u32) | 0xfffff000
-        }
-        else {
+        } else {
             val as u32
         }
     }
@@ -267,13 +268,35 @@ impl Processor {
         let v = self.mem.read_halfword(addr) as u32;
         self.write_reg(args.rd, v);
     }
+
+    // Inner procejure which is common to branch instructions.
+    // `offset` is branch instructions' immediate.
+    fn branch_inner(&mut self, condition: bool, offset: u16) -> Result<(), Exception> {
+        if condition {
+            if offset % 4 != 0 {
+                // This exception is generated only if the branch condition is true.
+                // cf. RISC-V Unprivileged ISA V20191213
+                Err(Exception::InstructionAddressMisaligned)
+            } else {
+                let offset = self.sign_extend(offset);
+                self.pc += offset;
+                Ok(())
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn inst_beq(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        self.branch_inner(lv == rv, args.imm)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use crate::decode::RType;
     use crate::memory::{EmptyMemory, VectorMemory};
 
     #[test]
@@ -526,7 +549,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.pc = 0x1234;
         proc.write_reg(1, 0x567);
         proc.inst_jalr(&args);
@@ -550,7 +573,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x567);
         proc.inst_addi(&args);
         assert_eq!(proc.read_reg(2), 0x68a);
@@ -566,7 +589,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_slli(&args);
         assert_eq!(proc.read_reg(2), 0x2b3c0);
@@ -582,7 +605,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x567);
         proc.inst_slti(&args);
         assert_eq!(proc.read_reg(2), 0x0);
@@ -606,7 +629,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_sltiu(&args);
         assert_eq!(proc.read_reg(2), 0x0);
@@ -630,7 +653,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_xori(&args);
         assert_eq!(proc.read_reg(2), 0x575b);
@@ -646,7 +669,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_srli(&args);
         assert_eq!(proc.read_reg(2), 0xacf);
@@ -666,7 +689,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_srai(&args);
         assert_eq!(proc.read_reg(2), 0xacf);
@@ -686,7 +709,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_ori(&args);
         assert_eq!(proc.read_reg(2), 0x577b);
@@ -702,7 +725,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        
+
         proc.write_reg(1, 0x5678);
         proc.inst_andi(&args);
         assert_eq!(proc.read_reg(2), 0x020);
@@ -758,5 +781,43 @@ mod tests {
 
         proc.inst_lhu(&args);
         assert_eq!(proc.read_reg(2), 0x8080);
+    }
+
+    #[test]
+    fn calc_rv32i_beq() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 42);
+        proc.write_reg(2, 42);
+        proc.inst_beq(&args)?;
+        assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    // Test for invalid address in branch instruction is enough for this case because a processing the
+    // exception is abstracted in `Processor::branch_inner()`.
+    #[test]
+    fn calc_rv32i_beq_invalid_address() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x81,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 42);
+        proc.write_reg(2, 42);
+        assert_eq!(
+            proc.inst_beq(&args),
+            Err(Exception::InstructionAddressMisaligned)
+        );
+        Ok(())
     }
 }
