@@ -71,6 +71,8 @@ impl Processor {
             Instruction::Bne(args) => self.inst_bne(&args)?,
             Instruction::Blt(args) => self.inst_blt(&args)?,
             Instruction::Bge(args) => self.inst_bge(&args)?,
+            Instruction::Bltu(args) => self.inst_bltu(&args)?,
+            Instruction::Bgeu(args) => self.inst_bgeu(&args)?,
 
             _ => panic!("unimplemented"),
         }
@@ -311,6 +313,18 @@ impl Processor {
     fn inst_bge(&mut self, args: &BType) -> Result<(), Exception> {
         let lv = self.read_reg(args.rs1) as i32;
         let rv = self.read_reg(args.rs2) as i32;
+        self.branch_inner(lv >= rv, args.imm)
+    }
+
+    fn inst_bltu(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        self.branch_inner(lv < rv, args.imm)
+    }
+
+    fn inst_bgeu(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
         self.branch_inner(lv >= rv, args.imm)
     }
 }
@@ -805,7 +819,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_beq() -> Result<(), Exception> {
+    fn calc_rv32i_b_beq() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args = BType {
             rs1: 1,
@@ -824,7 +838,7 @@ mod tests {
     // Test for invalid address in branch instruction is enough for this case because a processing the
     // exception is abstracted in `Processor::branch_inner()`.
     #[test]
-    fn calc_rv32i_beq_invalid_address() -> Result<(), Exception> {
+    fn calc_rv32i_b_beq_invalid_address() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args = BType {
             rs1: 1,
@@ -843,7 +857,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_bne() -> Result<(), Exception> {
+    fn calc_rv32i_b_bne() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args = BType {
             rs1: 1,
@@ -860,7 +874,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_blt() -> Result<(), Exception> {
+    fn calc_rv32i_b_blt() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args = BType {
             rs1: 1,
@@ -878,7 +892,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_bgt() -> Result<(), Exception> {
+    fn calc_rv32i_b_bgt() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args = BType {
             rs1: 1,
@@ -897,6 +911,48 @@ mod tests {
         proc.write_reg(2, 0xffffff80);
         // Compare register values as signed value.
         proc.inst_bge(&args)?;
+        assert_eq!(proc.pc, 0x100);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_b_bltu() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as unsigned value.
+        proc.inst_bltu(&args)?;
+        assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_b_bgtu() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0xffffff80);
+        proc.write_reg(2, 0);
+        // Compare register values as unsigned value.
+        proc.inst_bgeu(&args)?;
+        assert_eq!(proc.pc, 0x80);
+
+        proc.write_reg(1, 0xffffff80);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as signed value.
+        proc.inst_bgeu(&args)?;
         assert_eq!(proc.pc, 0x100);
         Ok(())
     }
