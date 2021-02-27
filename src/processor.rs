@@ -279,7 +279,7 @@ impl Processor {
         let addr = (base + offset) as usize;
         // Write least significant byte in rs2.
         let data = self.read_reg(args.rs2) & 0xff;
-        self.mem.write_word(addr, data);
+        self.mem.write_byte(addr, data as u8);
     }
 
     fn inst_sh(&mut self, args: &SType) {
@@ -288,7 +288,7 @@ impl Processor {
         let addr = (base + offset) as usize;
         // Write least significant 2 byte in rs2.
         let data = self.read_reg(args.rs2) & 0xffff;
-        self.mem.write_word(addr, data);
+        self.mem.write_halfword(addr, data as u16);
     }
 
     fn inst_sw(&mut self, args: &SType) {

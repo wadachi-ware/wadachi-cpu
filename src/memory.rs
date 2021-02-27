@@ -5,6 +5,8 @@ pub trait Memory {
     fn read_halfword(&self, addr: usize) -> u16;
     fn read_word(&self, addr: usize) -> u32;
 
+    fn write_byte(&mut self, addr: usize, data: u8);
+    fn write_halfword(&mut self, addr: usize, data: u16);
     fn write_word(&mut self, addr: usize, data: u32);
 }
 
@@ -27,6 +29,10 @@ impl Memory for EmptyMemory {
     fn read_word(&self, _addr: usize) -> u32 {
         0
     }
+
+    fn write_byte(&mut self, _addr: usize, _data: u8) {}
+
+    fn write_halfword(&mut self, _addr: usize, _data: u16) {}
 
     fn write_word(&mut self, _addr: usize, _data: u32) {}
 }
@@ -68,6 +74,17 @@ impl VectorMemory {
             | (self.memory[addr + 1] as u32) << 8
             | (self.memory[addr + 2] as u32) << 16
             | (self.memory[addr + 3] as u32) << 24
+    }
+
+    /// Write little-endian byte located at *addr*
+    fn write_lb(&mut self, addr: usize, val: u8) {
+        self.memory[addr] = val;
+    }
+
+    /// Write little-endian halfword located at *addr*
+    fn write_lh(&mut self, addr: usize, val: u16) {
+        self.memory[addr] = val as u8;
+        self.memory[addr + 1] = (val >> 8) as u8;
     }
 
     /// write big-endian word at *addr*
@@ -115,6 +132,14 @@ impl Memory for VectorMemory {
         self.read_lw(addr)
     }
 
+    fn write_byte(&mut self, addr: usize, data: u8) {
+        self.write_lb(addr, data);
+    }
+
+    fn write_halfword(&mut self, addr: usize, data: u16) {
+        self.write_lh(addr, data);
+    }
+
     /// write word at *addr*
     fn write_word(&mut self, addr: usize, data: u32) {
         self.write_lw(addr, data);
@@ -160,11 +185,26 @@ mod tests {
         assert_eq!(mem.read_word(8), 0);
         assert_eq!(mem.read_word(12), 0);
 
+        mem.write_byte(4, 0x78);
+        mem.write_byte(5, 0x56);
+        mem.write_byte(6, 0x34);
+        mem.write_byte(7, 0x12);
+        assert_eq!(mem.read_byte(4), 0x78);
+        assert_eq!(mem.read_byte(5), 0x56);
+        assert_eq!(mem.read_byte(6), 0x34);
+        assert_eq!(mem.read_byte(7), 0x12);
+        assert_eq!(mem.read_word(4), 0x12345678);
+
+        mem.write_halfword(8, 0x5678);
+        mem.write_halfword(10, 0x1234);
+        assert_eq!(mem.read_halfword(8), 0x5678);
+        assert_eq!(mem.read_halfword(10), 0x1234);
+        assert_eq!(mem.read_word(8), 0x12345678);
+
         mem.write_word(0, 0x12345678);
         mem.write_word(4, 0x90abcdef);
         mem.write_word(8, 0xdeadbeef);
         mem.write_word(12, 0xabadbabe);
-
         assert_eq!(mem.read_word(0), 0x12345678);
         assert_eq!(mem.read_word(4), 0x90abcdef);
         assert_eq!(mem.read_word(8), 0xdeadbeef);
