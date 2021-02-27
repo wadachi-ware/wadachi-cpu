@@ -68,6 +68,7 @@ impl Processor {
 
             // B-Type
             Instruction::Beq(args) => self.inst_beq(&args)?,
+            Instruction::Bne(args) => self.inst_bne(&args)?,
 
             _ => panic!("unimplemented"),
         }
@@ -291,6 +292,12 @@ impl Processor {
         let lv = self.read_reg(args.rs1);
         let rv = self.read_reg(args.rs2);
         self.branch_inner(lv == rv, args.imm)
+    }
+
+    fn inst_bne(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        self.branch_inner(lv != rv, args.imm)
     }
 }
 
@@ -818,6 +825,23 @@ mod tests {
             proc.inst_beq(&args),
             Err(Exception::InstructionAddressMisaligned)
         );
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_bne() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 42);
+        proc.write_reg(2, 0);
+        proc.inst_bne(&args)?;
+        assert_eq!(proc.pc, 0x80);
         Ok(())
     }
 }
