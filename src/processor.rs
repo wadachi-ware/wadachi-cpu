@@ -1,7 +1,6 @@
+use crate::decode::{decode, BType, IType, Instruction, RType};
 use crate::exception::Exception;
 use crate::memory::Memory;
-
-use crate::decode::{decode, BType, IType, Instruction, RType};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -10,11 +9,44 @@ pub struct Processor {
 }
 
 impl Processor {
+    /// Instruction execution starts from the `pc`.
     pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
             regs: [0; 32],
             pc: 0,
             mem: memory,
+        }
+    }
+
+    /// Set program counter to start instruction execution.
+    pub fn set_pc(&mut self, pc: u32) {
+        if pc % 4 != 0 {
+            // If this rule is broken, instruction execution will never be done properly.
+            // And this is not during instruction execution, so returning `Exception` is
+            // inappropriate.
+            panic!("Instruction address must be aligned to a 4byte boundary");
+        }
+        self.pc = pc;
+    }
+
+    /// Load a program, which is an array of `u32` integer, in the `address`.
+    pub fn load(&mut self, address: u32, program: Vec<u32>) {
+        if address % 4 != 0 {
+            panic!("Instruction address must be aligned to a 4byte boundary");
+        }
+        for (index, instruction) in program.iter().enumerate() {
+            self.mem
+                .write_inst(address as usize + index * 4, *instruction);
+        }
+    }
+
+    /// Execute the program stored in the memory.
+    pub fn execute(&mut self) {
+        loop {
+            if let Err(_) = self.tick() {
+                // We have nothing to do with exception, stop the loop for now.
+                break;
+            }
         }
     }
 
@@ -33,6 +65,10 @@ impl Processor {
     }
 
     pub fn tick(&mut self) -> Result<(), Exception> {
+        if self.pc + 4 > self.mem.len() as u32 {
+            return Err(Exception::InstructionAccessFault);
+        }
+
         let mut skip_inc = false;
         let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
