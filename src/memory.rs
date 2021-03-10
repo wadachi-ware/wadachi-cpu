@@ -1,11 +1,22 @@
 pub trait Memory {
+    /// Read an instruction located at *addr*
     fn read_inst(&self, addr: usize) -> u32;
 
+    /// Read byte located at *addr*
     fn read_byte(&self, addr: usize) -> u8;
+    /// Read half word located at *addr*
     fn read_halfword(&self, addr: usize) -> u16;
+    /// Read word located at *addr*
     fn read_word(&self, addr: usize) -> u32;
 
+    /// Write an instruction located at *addr*
+    fn write_inst(&mut self, addr: usize, data: u32);
+
+    /// Write word at *addr*
     fn write_word(&mut self, addr: usize, data: u32);
+
+    /// Get memory size in byte.
+    fn len(&self) -> usize;
 }
 
 #[derive(Debug)]
@@ -28,7 +39,13 @@ impl Memory for EmptyMemory {
         0
     }
 
+    fn write_inst(&mut self, _addr: usize, _data: u32) {}
+
     fn write_word(&mut self, _addr: usize, _data: u32) {}
+
+    fn len(&self) -> usize {
+        0
+    }
 }
 
 #[derive(Debug)]
@@ -51,8 +68,7 @@ impl VectorMemory {
 
     /// read little-endian half word located at *addr*
     fn read_lh(&self, addr: usize) -> u16 {
-        (self.memory[addr] as u16)
-            | (self.memory[addr + 1] as u16) << 8
+        (self.memory[addr] as u16) | (self.memory[addr + 1] as u16) << 8
     }
 
     /// read big-endian word located at *addr*
@@ -96,29 +112,32 @@ impl VectorMemory {
 }
 
 impl Memory for VectorMemory {
-    /// read an instruction located at *addr*
     fn read_inst(&self, addr: usize) -> u32 {
         self.read_bw(addr)
     }
 
-    /// read byte located at *addr*
     fn read_byte(&self, addr: usize) -> u8 {
         self.read_lb(addr)
     }
 
-    /// read half word located at *addr*
     fn read_halfword(&self, addr: usize) -> u16 {
         self.read_lh(addr)
     }
 
-    /// read word located at *addr*
     fn read_word(&self, addr: usize) -> u32 {
         self.read_lw(addr)
     }
 
-    /// write word at *addr*
+    fn write_inst(&mut self, addr: usize, data: u32) {
+        self.write_bw(addr, data);
+    }
+
     fn write_word(&mut self, addr: usize, data: u32) {
         self.write_lw(addr, data);
+    }
+
+    fn len(&self) -> usize {
+        self.memory.len()
     }
 }
 
