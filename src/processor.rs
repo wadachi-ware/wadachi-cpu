@@ -1,4 +1,4 @@
-use crate::decode::{decode, BType, IType, Instruction, RType};
+use crate::decode::{decode, BType, IType, Instruction, RType, UType};
 use crate::exception::Exception;
 use crate::memory::Memory;
 
@@ -109,6 +109,9 @@ impl Processor {
             Instruction::Bge(args) => self.inst_bge(&args)?,
             Instruction::Bltu(args) => self.inst_bltu(&args)?,
             Instruction::Bgeu(args) => self.inst_bgeu(&args)?,
+
+            // U-Type
+            Instruction::Lui(args) => self.inst_lui(&args),
 
             _ => panic!("unimplemented"),
         }
@@ -362,6 +365,11 @@ impl Processor {
         let lv = self.read_reg(args.rs1);
         let rv = self.read_reg(args.rs2);
         self.branch_inner(lv >= rv, args.imm)
+    }
+
+    fn inst_lui(&mut self, args: &UType) {
+        let imm = args.imm << 12;
+        self.write_reg(args.rd, imm);
     }
 }
 
@@ -991,5 +999,19 @@ mod tests {
         proc.inst_bgeu(&args)?;
         assert_eq!(proc.pc, 0x100);
         Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_u_lui() {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = UType {
+            rd: 1,
+            imm: 0xfffff,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x0);
+        proc.inst_lui(&args);
+        assert_eq!(proc.read_reg(args.rd), 0xfffff000);
     }
 }
