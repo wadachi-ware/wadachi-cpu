@@ -92,9 +92,9 @@ pub struct SType {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct BType {
-    rs1: usize,
-    rs2: usize,
-    imm: u16,
+    pub rs1: usize,
+    pub rs2: usize,
+    pub imm: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
