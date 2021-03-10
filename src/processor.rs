@@ -111,6 +111,7 @@ impl Processor {
             Instruction::Bgeu(args) => self.inst_bgeu(&args)?,
 
             // U-Type
+            Instruction::Auipc(args) => self.inst_auipc(&args),
             Instruction::Lui(args) => self.inst_lui(&args),
 
             _ => panic!("unimplemented"),
@@ -365,6 +366,12 @@ impl Processor {
         let lv = self.read_reg(args.rs1);
         let rv = self.read_reg(args.rs2);
         self.branch_inner(lv >= rv, args.imm)
+    }
+
+    fn inst_auipc(&mut self, args: &UType) {
+        let imm = args.imm << 12;
+        self.set_pc(imm);
+        self.write_reg(args.rd, imm);
     }
 
     fn inst_lui(&mut self, args: &UType) {
@@ -1013,5 +1020,20 @@ mod tests {
         proc.write_reg(1, 0x0);
         proc.inst_lui(&args);
         assert_eq!(proc.read_reg(args.rd), 0xfffff000);
+    }
+
+    #[test]
+    fn calc_rv32i_u_auipc() {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = UType {
+            rd: 1,
+            imm: 0xfffff,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x0);
+        proc.inst_auipc(&args);
+        assert_eq!(proc.read_reg(args.rd), 0xfffff000);
+        assert_eq!(proc.pc, 0xfffff000);
     }
 }
