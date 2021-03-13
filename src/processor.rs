@@ -1,4 +1,4 @@
-use crate::decode::{decode, BType, IType, Instruction, RType};
+use crate::decode::{decode, BType, IType, Instruction, RType, SType};
 use crate::exception::Exception;
 use crate::memory::Memory;
 
@@ -8,7 +8,7 @@ pub struct Processor {
     pub mem: Box<dyn Memory>,
 }
 
-impl Processor 
+impl Processor {
     /// Instruction execution starts from the `pc`.
     pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
@@ -342,6 +342,7 @@ impl Processor {
         // Write least significant 4 byte in rs2.
         let data = self.read_reg(args.rs2);
         self.mem.write_word(addr, data);
+    }
 
     // Inner procejure which is common to branch instructions.
     // `offset` is branch instructions' immediate.
@@ -352,7 +353,7 @@ impl Processor {
                 // cf. RISC-V Unprivileged ISA V20191213
                 Err(Exception::InstructionAddressMisaligned)
             } else {
-                let offset = self.sign_extend(offset);
+                let offset = Self::sign_extend(offset);
                 self.pc += offset;
                 Ok(())
             }
@@ -936,7 +937,9 @@ mod tests {
         proc.write_reg(2, 0x80808080);
         proc.inst_sw(&args);
         assert_eq!(proc.mem.read_word(4), 0x80808080);
+    }
 
+    #[test]
     fn calc_rv32i_b_beq() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args = BType {

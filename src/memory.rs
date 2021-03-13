@@ -4,7 +4,7 @@ pub trait Memory {
 
     /// Read byte located at *addr*
     fn read_byte(&self, addr: usize) -> u8;
-    
+
     /// Read half word located at *addr*
     fn read_halfword(&self, addr: usize) -> u16;
 
@@ -46,7 +46,7 @@ impl Memory for EmptyMemory {
     fn read_word(&self, _addr: usize) -> u32 {
         0
     }
-  
+
     fn write_inst(&mut self, _addr: usize, _data: u32) {}
 
     fn write_byte(&mut self, _addr: usize, _data: u8) {}
