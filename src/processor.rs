@@ -369,9 +369,10 @@ impl Processor {
     }
 
     fn inst_auipc(&mut self, args: &UType) {
-        let imm = args.imm << 12;
-        self.set_pc(imm);
-        self.write_reg(args.rd, imm);
+        let offset = args.imm << 12;
+        let new_pc = self.pc + offset;
+        self.set_pc(new_pc);
+        self.write_reg(args.rd, new_pc);
     }
 
     fn inst_lui(&mut self, args: &UType) {
@@ -1032,8 +1033,10 @@ mod tests {
 
         let mut proc = Processor::new(memory);
         proc.write_reg(1, 0x0);
+        // If pc is 0, cannot detect not adding `imm` to current pc.
+        proc.set_pc(4);
         proc.inst_auipc(&args);
-        assert_eq!(proc.read_reg(args.rd), 0xfffff000);
-        assert_eq!(proc.pc, 0xfffff000);
+        assert_eq!(proc.read_reg(args.rd), 0xfffff004);
+        assert_eq!(proc.pc, 0xfffff004);
     }
 }
