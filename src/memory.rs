@@ -1,13 +1,30 @@
 pub trait Memory {
+    /// Read an instruction located at *addr*
     fn read_inst(&self, addr: usize) -> u32;
 
+    /// Read byte located at *addr*
     fn read_byte(&self, addr: usize) -> u8;
+    
+    /// Read half word located at *addr*
     fn read_halfword(&self, addr: usize) -> u16;
+
+    /// Read word located at *addr*
     fn read_word(&self, addr: usize) -> u32;
 
+    /// Write an instruction located at *addr*
+    fn write_inst(&mut self, addr: usize, data: u32);
+
+    /// Write halfword at *addr*
     fn write_byte(&mut self, addr: usize, data: u8);
+
+    /// Write halfword at *addr*
     fn write_halfword(&mut self, addr: usize, data: u16);
+
+    /// Write word at *addr*
     fn write_word(&mut self, addr: usize, data: u32);
+
+    /// Get memory size in byte.
+    fn len(&self) -> usize;
 }
 
 #[derive(Debug)]
@@ -29,12 +46,18 @@ impl Memory for EmptyMemory {
     fn read_word(&self, _addr: usize) -> u32 {
         0
     }
+  
+    fn write_inst(&mut self, _addr: usize, _data: u32) {}
 
     fn write_byte(&mut self, _addr: usize, _data: u8) {}
 
     fn write_halfword(&mut self, _addr: usize, _data: u16) {}
 
     fn write_word(&mut self, _addr: usize, _data: u32) {}
+
+    fn len(&self) -> usize {
+        0
+    }
 }
 
 #[derive(Debug)]
@@ -112,24 +135,25 @@ impl VectorMemory {
 }
 
 impl Memory for VectorMemory {
-    /// read an instruction located at *addr*
     fn read_inst(&self, addr: usize) -> u32 {
         self.read_bw(addr)
     }
 
-    /// read byte located at *addr*
     fn read_byte(&self, addr: usize) -> u8 {
         self.read_lb(addr)
     }
 
-    /// read half word located at *addr*
     fn read_halfword(&self, addr: usize) -> u16 {
         self.read_lh(addr)
     }
 
-    /// read word located at *addr*
     fn read_word(&self, addr: usize) -> u32 {
         self.read_lw(addr)
+    }
+
+    /// write word at *addr*
+    fn write_inst(&mut self, addr: usize, data: u32) {
+        self.write_bw(addr, data);
     }
 
     fn write_byte(&mut self, addr: usize, data: u8) {
@@ -140,9 +164,12 @@ impl Memory for VectorMemory {
         self.write_lh(addr, data);
     }
 
-    /// write word at *addr*
     fn write_word(&mut self, addr: usize, data: u32) {
         self.write_lw(addr, data);
+    }
+
+    fn len(&self) -> usize {
+        self.memory.len()
     }
 }
 

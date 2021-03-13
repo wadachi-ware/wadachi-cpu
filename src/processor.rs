@@ -1,7 +1,6 @@
+use crate::decode::{decode, BType, IType, Instruction, RType};
 use crate::exception::Exception;
 use crate::memory::Memory;
-
-use crate::decode::{decode, IType, Instruction, RType, SType};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -9,12 +8,45 @@ pub struct Processor {
     pub mem: Box<dyn Memory>,
 }
 
-impl Processor {
+impl Processor 
+    /// Instruction execution starts from the `pc`.
     pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
             regs: [0; 32],
             pc: 0,
             mem: memory,
+        }
+    }
+
+    /// Set program counter to start instruction execution.
+    pub fn set_pc(&mut self, pc: u32) {
+        if pc % 4 != 0 {
+            // If this rule is broken, instruction execution will never be done properly.
+            // And this is not during instruction execution, so returning `Exception` is
+            // inappropriate.
+            panic!("Instruction address must be aligned to a 4byte boundary");
+        }
+        self.pc = pc;
+    }
+
+    /// Load a program, which is an array of `u32` integer, in the `address`.
+    pub fn load(&mut self, address: u32, program: Vec<u32>) {
+        if address % 4 != 0 {
+            panic!("Instruction address must be aligned to a 4byte boundary");
+        }
+        for (index, instruction) in program.iter().enumerate() {
+            self.mem
+                .write_inst(address as usize + index * 4, *instruction);
+        }
+    }
+
+    /// Execute the program stored in the memory.
+    pub fn execute(&mut self) {
+        loop {
+            if let Err(_) = self.tick() {
+                // We have nothing to do with exception, stop the loop for now.
+                break;
+            }
         }
     }
 
@@ -33,6 +65,10 @@ impl Processor {
     }
 
     pub fn tick(&mut self) -> Result<(), Exception> {
+        if self.pc + 4 > self.mem.len() as u32 {
+            return Err(Exception::InstructionAccessFault);
+        }
+
         let mut skip_inc = false;
         let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
@@ -72,6 +108,14 @@ impl Processor {
             Instruction::Sb(args) => self.inst_sb(&args),
             Instruction::Sh(args) => self.inst_sh(&args),
             Instruction::Sw(args) => self.inst_sw(&args),
+
+            // B-Type
+            Instruction::Beq(args) => self.inst_beq(&args)?,
+            Instruction::Bne(args) => self.inst_bne(&args)?,
+            Instruction::Blt(args) => self.inst_blt(&args)?,
+            Instruction::Bge(args) => self.inst_bge(&args)?,
+            Instruction::Bltu(args) => self.inst_bltu(&args)?,
+            Instruction::Bgeu(args) => self.inst_bgeu(&args)?,
 
             _ => panic!("unimplemented"),
         }
@@ -298,13 +342,65 @@ impl Processor {
         // Write least significant 4 byte in rs2.
         let data = self.read_reg(args.rs2);
         self.mem.write_word(addr, data);
+
+    // Inner procejure which is common to branch instructions.
+    // `offset` is branch instructions' immediate.
+    fn branch_inner(&mut self, condition: bool, offset: u16) -> Result<(), Exception> {
+        if condition {
+            if offset % 4 != 0 {
+                // This exception is generated only if the branch condition is true.
+                // cf. RISC-V Unprivileged ISA V20191213
+                Err(Exception::InstructionAddressMisaligned)
+            } else {
+                let offset = self.sign_extend(offset);
+                self.pc += offset;
+                Ok(())
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    fn inst_beq(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        self.branch_inner(lv == rv, args.imm)
+    }
+
+    fn inst_bne(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        self.branch_inner(lv != rv, args.imm)
+    }
+
+    fn inst_blt(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1) as i32;
+        let rv = self.read_reg(args.rs2) as i32;
+        self.branch_inner(lv < rv, args.imm)
+    }
+
+    fn inst_bge(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1) as i32;
+        let rv = self.read_reg(args.rs2) as i32;
+        self.branch_inner(lv >= rv, args.imm)
+    }
+
+    fn inst_bltu(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        self.branch_inner(lv < rv, args.imm)
+    }
+
+    fn inst_bgeu(&mut self, args: &BType) -> Result<(), Exception> {
+        let lv = self.read_reg(args.rs1);
+        let rv = self.read_reg(args.rs2);
+        self.branch_inner(lv >= rv, args.imm)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::memory::{EmptyMemory, VectorMemory};
 
     #[test]
@@ -557,7 +653,7 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
-        proc.pc = 0x1234;
+        proc.set_pc(0x1234);
 
         proc.write_reg(1, 0x567);
         proc.inst_jalr(&args);
@@ -840,5 +936,142 @@ mod tests {
         proc.write_reg(2, 0x80808080);
         proc.inst_sw(&args);
         assert_eq!(proc.mem.read_word(4), 0x80808080);
+
+    fn calc_rv32i_b_beq() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 42);
+        proc.write_reg(2, 42);
+        proc.inst_beq(&args)?;
+        assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    // Test for invalid address in branch instruction is enough for this case because a processing the
+    // exception is abstracted in `Processor::branch_inner()`.
+    #[test]
+    fn calc_rv32i_b_beq_invalid_address() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x81,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 42);
+        proc.write_reg(2, 42);
+        assert_eq!(
+            proc.inst_beq(&args),
+            Err(Exception::InstructionAddressMisaligned)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_b_bne() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 42);
+        proc.write_reg(2, 0);
+        proc.inst_bne(&args)?;
+        assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_b_blt() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0xffffff80);
+        proc.write_reg(2, 0);
+        // Compare register values as signed value.
+        proc.inst_blt(&args)?;
+        assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_b_bgt() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as signed value.
+        proc.inst_bge(&args)?;
+        assert_eq!(proc.pc, 0x80);
+
+        proc.write_reg(1, 0xffffff80);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as signed value.
+        proc.inst_bge(&args)?;
+        assert_eq!(proc.pc, 0x100);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_b_bltu() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as unsigned value.
+        proc.inst_bltu(&args)?;
+        assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_b_bgtu() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = BType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x80,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0xffffff80);
+        proc.write_reg(2, 0);
+        // Compare register values as unsigned value.
+        proc.inst_bgeu(&args)?;
+        assert_eq!(proc.pc, 0x80);
+
+        proc.write_reg(1, 0xffffff80);
+        proc.write_reg(2, 0xffffff80);
+        // Compare register values as signed value.
+        proc.inst_bgeu(&args)?;
+        assert_eq!(proc.pc, 0x100);
+        Ok(())
     }
 }
