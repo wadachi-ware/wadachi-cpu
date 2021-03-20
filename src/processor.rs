@@ -6,6 +6,8 @@ pub struct Processor {
     pub regs: [u32; 32],
     pub pc: u32,
     pub mem: Box<dyn Memory>,
+    // Used to determine if the pc should be incremented.
+    has_jumped: bool,
 }
 
 impl Processor {
@@ -15,6 +17,7 @@ impl Processor {
             regs: [0; 32],
             pc: 0,
             mem: memory,
+            has_jumped: false,
         }
     }
 
@@ -72,7 +75,6 @@ impl Processor {
             return Err(Exception::InstructionAccessFault);
         }
 
-        let mut skip_inc = false;
         let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
             // R-Type
@@ -88,10 +90,7 @@ impl Processor {
             Instruction::And(args) => self.inst_and(&args),
 
             // I-Type
-            Instruction::Jalr(args) => {
-                self.inst_jalr(&args)?;
-                skip_inc = true;
-            }
+            Instruction::Jalr(args) => self.inst_jalr(&args)?,
             Instruction::Addi(args) => self.inst_addi(&args),
             Instruction::Slli(args) => self.inst_slli(&args),
             Instruction::Slti(args) => self.inst_slti(&args),
@@ -125,9 +124,12 @@ impl Processor {
             _ => panic!("unimplemented"),
         }
 
-        if !skip_inc {
-            self.pc += 4;
+        // If no jump occured, increment pc.
+        if !self.has_jumped {
+            self.pc +=  4;
         }
+        self.has_jumped = false;
+
         Ok(())
     }
 }
@@ -229,6 +231,7 @@ impl Processor {
         }
         self.write_reg(args.rd, self.pc + 4);
         self.set_pc(new_pc);
+        self.has_jumped = true;
         Ok(())
     }
 
@@ -346,6 +349,7 @@ impl Processor {
             } else {
                 let offset = self.sign_extend(offset);
                 self.pc += offset;
+                self.has_jumped = true;
                 Ok(())
             }
         } else {
@@ -409,6 +413,7 @@ impl Processor {
             return Err(Exception::InstructionAddressMisaligned);
         }
         self.set_pc(new_pc);
+        self.has_jumped = true;
         Ok(())
     }
 }
