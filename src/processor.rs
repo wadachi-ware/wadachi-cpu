@@ -126,7 +126,7 @@ impl Processor {
 
         // If no jump occured, increment pc.
         if !self.has_jumped {
-            self.pc +=  4;
+            self.pc += 4;
         }
         self.has_jumped = false;
 
