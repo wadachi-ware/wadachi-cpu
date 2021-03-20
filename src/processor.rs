@@ -1,4 +1,4 @@
-use crate::decode::{decode, BType, IType, Instruction, RType, UType};
+use crate::decode::{decode, BType, IType, Instruction, JType, RType, UType};
 use crate::exception::Exception;
 use crate::memory::Memory;
 
@@ -6,6 +6,8 @@ pub struct Processor {
     pub regs: [u32; 32],
     pub pc: u32,
     pub mem: Box<dyn Memory>,
+    // Used to determine if the pc should be incremented.
+    has_jumped: bool,
 }
 
 impl Processor {
@@ -15,6 +17,7 @@ impl Processor {
             regs: [0; 32],
             pc: 0,
             mem: memory,
+            has_jumped: false,
         }
     }
 
@@ -50,6 +53,7 @@ impl Processor {
         }
     }
 
+    /// Read the register value at index `idx`.
     fn read_reg(&self, idx: usize) -> u32 {
         if idx == 0 {
             0
@@ -58,20 +62,22 @@ impl Processor {
         }
     }
 
+    /// Write value to the register at index `idx`.
     fn write_reg(&mut self, idx: usize, val: u32) {
         if idx != 0 {
             self.regs[idx] = val;
         }
     }
 
+    /// Read an instruction from current program counter and execute it.
     pub fn tick(&mut self) -> Result<(), Exception> {
         if self.pc + 4 > self.mem.len() as u32 {
             return Err(Exception::InstructionAccessFault);
         }
 
-        let mut skip_inc = false;
         let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
+            // R-Type
             Instruction::Add(args) => self.inst_add(&args),
             Instruction::Sub(args) => self.inst_sub(&args),
             Instruction::Sll(args) => self.inst_sll(&args),
@@ -83,10 +89,8 @@ impl Processor {
             Instruction::Or(args) => self.inst_or(&args),
             Instruction::And(args) => self.inst_and(&args),
 
-            Instruction::Jalr(args) => {
-                self.inst_jalr(&args);
-                skip_inc = true;
-            }
+            // I-Type
+            Instruction::Jalr(args) => self.inst_jalr(&args)?,
             Instruction::Addi(args) => self.inst_addi(&args),
             Instruction::Slli(args) => self.inst_slli(&args),
             Instruction::Slti(args) => self.inst_slti(&args),
@@ -114,12 +118,18 @@ impl Processor {
             Instruction::Auipc(args) => self.inst_auipc(&args),
             Instruction::Lui(args) => self.inst_lui(&args),
 
+            // J-Type
+            Instruction::Jal(args) => self.inst_jal(&args)?,
+
             _ => panic!("unimplemented"),
         }
 
-        if !skip_inc {
+        // If no jump occured, increment pc.
+        if !self.has_jumped {
             self.pc += 4;
         }
+        self.has_jumped = false;
+
         Ok(())
     }
 }
@@ -130,6 +140,15 @@ impl Processor {
             (val as u32) | 0xfffff000
         } else {
             val as u32
+        }
+    }
+
+    // Sign extend given integer with 20bit.
+    const fn sign_extend_20bit(value: u32) -> i32 {
+        if value & 0xfff80000 != 0 {
+            (value | 0xfff00000) as i32
+        } else {
+            value as i32
         }
     }
 
@@ -203,12 +222,17 @@ impl Processor {
         self.write_reg(args.rd, v);
     }
 
-    fn inst_jalr(&mut self, args: &IType) {
+    fn inst_jalr(&mut self, args: &IType) -> Result<(), Exception> {
         let lv = self.read_reg(args.rs1);
         let rv = self.sign_extend(args.imm);
-        let addr = (lv + rv) & 0xffff_fffe;
+        let new_pc = (lv + rv) & 0xffff_fffe;
+        if new_pc % 4 != 0 {
+            return Err(Exception::InstructionAddressMisaligned);
+        }
         self.write_reg(args.rd, self.pc + 4);
-        self.pc = addr;
+        self.set_pc(new_pc);
+        self.has_jumped = true;
+        Ok(())
     }
 
     fn inst_addi(&mut self, args: &IType) {
@@ -325,6 +349,7 @@ impl Processor {
             } else {
                 let offset = self.sign_extend(offset);
                 self.pc += offset;
+                self.has_jumped = true;
                 Ok(())
             }
         } else {
@@ -378,6 +403,18 @@ impl Processor {
     fn inst_lui(&mut self, args: &UType) {
         let imm = args.imm << 12;
         self.write_reg(args.rd, imm);
+    }
+
+    fn inst_jal(&mut self, args: &JType) -> Result<(), Exception> {
+        self.write_reg(args.rd, self.pc + 4);
+        let offset = Self::sign_extend_20bit(args.imm);
+        let new_pc = (self.pc as i32).wrapping_add(offset) as u32;
+        if new_pc % 4 != 0 {
+            return Err(Exception::InstructionAddressMisaligned);
+        }
+        self.set_pc(new_pc);
+        self.has_jumped = true;
+        Ok(())
     }
 }
 
@@ -627,27 +664,49 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_i_jalr() {
+    fn calc_rv32i_i_jalr() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: IType = IType {
             rs1: 1,
             rd: 2,
-            imm: 0x123,
+            imm: 0x111,
         };
 
         let mut proc = Processor::new(memory);
 
         proc.pc = 0x1234;
         proc.write_reg(1, 0x567);
-        proc.inst_jalr(&args);
+        proc.inst_jalr(&args)?;
         assert_eq!(proc.read_reg(2), 0x1238);
-        assert_eq!(proc.pc, 0x68a);
+        assert_eq!(proc.pc, 0x678);
 
         proc.pc = 0x1234;
-        proc.write_reg(1, 0x456);
-        proc.inst_jalr(&args);
+        proc.write_reg(1, 0x543);
+        proc.inst_jalr(&args)?;
         assert_eq!(proc.read_reg(2), 0x1238);
-        assert_eq!(proc.pc, 0x578);
+        assert_eq!(proc.pc, 0x654);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_i_jalr_invalid_address() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args: IType = IType {
+            rs1: 1,
+            rd: 2,
+            imm: 0x110,
+        };
+
+        let mut proc = Processor::new(memory);
+
+        proc.pc = 0x1234;
+        proc.write_reg(1, 0x567);
+        // x1 == 0x677, which is not aligned to a 4byte boundary.
+        assert_eq!(
+            proc.inst_jalr(&args),
+            Err(Exception::InstructionAddressMisaligned)
+        );
+        Ok(())
     }
 
     #[test]
@@ -1034,9 +1093,45 @@ mod tests {
         let mut proc = Processor::new(memory);
         proc.write_reg(1, 0x0);
         // If pc is 0, cannot detect not adding `imm` to current pc.
-        proc.set_pc(4);
+        proc.set_pc(0x4);
         proc.inst_auipc(&args);
         assert_eq!(proc.read_reg(args.rd), 0xfffff004);
         assert_eq!(proc.pc, 0xfffff004);
+    }
+
+    #[test]
+    fn calc_rv32i_j_jal() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = JType { rd: 1, imm: 0x80 };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x0);
+        proc.set_pc(0x4);
+        proc.inst_jal(&args)?;
+        assert_eq!(proc.read_reg(args.rd), 0x8);
+        assert_eq!(proc.pc, 0x84);
+
+        let args = JType {
+            rd: 1,
+            imm: 0xfffffffc, // -4
+        };
+        proc.inst_jal(&args)?;
+        assert_eq!(proc.read_reg(args.rd), 0x88);
+        assert_eq!(proc.pc, 0x80);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_j_jal_invalid_address() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args = JType { rd: 1, imm: 0x82 };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x0);
+        assert_eq!(
+            proc.inst_jal(&args),
+            Err(Exception::InstructionAddressMisaligned)
+        );
+        Ok(())
     }
 }

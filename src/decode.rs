@@ -11,6 +11,8 @@ const FUNCT7_RANGE: Range<usize> = 25..32;
 const IMM_RANGE: Range<usize> = 20..32;
 const UPPER_IMM_RANGE: Range<usize> = 12..32;
 
+/// Enumerates instructions.
+/// Each entry have a struct holding parameters such as register index.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
     // R-Type
@@ -69,6 +71,8 @@ pub enum Instruction {
     Auipc(UType),
 }
 
+/// Parameters common to R-Type instructions.
+/// This is the same for structs below.
 #[derive(Debug, PartialEq, Eq)]
 pub struct RType {
     pub rd: usize,
@@ -170,15 +174,15 @@ impl JType {
         let imm = instruction.get_bits(21..31)
             + (instruction.get_bits(20..21) << 10)
             + (instruction.get_bits(12..20) << 11)
-            + (instruction.get_bits(31..32) << 19)
-            << 1;
+            + (instruction.get_bits(31..32) << 19);
         Self {
             rd: instruction.get_bits(RD_RANGE) as usize,
-            imm: imm as u32,
+            imm,
         }
     }
 }
 
+/// Decode an instruction.
 pub fn decode(instruction: u32) -> Result<Instruction, Exception> {
     let decoded = match instruction.get_bits(OPCODE_RANGE) {
         // R-Type
@@ -712,9 +716,9 @@ mod tests {
 
     #[test]
     fn decode_rv32i_j() -> Result<(), Exception> {
-        // jal x1, 529408
+        // jal x1, 264704
         assert_eq!(
-            Instruction::Jal(JType { rd: 1, imm: 529408 }),
+            Instruction::Jal(JType { rd: 1, imm: 264704 }),
             decode(0b01000000000010000001_00001_1101111)?
         );
         Ok(())

@@ -4,8 +4,10 @@ pub trait Memory {
 
     /// Read byte located at *addr*
     fn read_byte(&self, addr: usize) -> u8;
+
     /// Read half word located at *addr*
     fn read_halfword(&self, addr: usize) -> u16;
+
     /// Read word located at *addr*
     fn read_word(&self, addr: usize) -> u32;
 
