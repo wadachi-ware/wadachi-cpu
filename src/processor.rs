@@ -89,7 +89,7 @@ impl Processor {
 
             // I-Type
             Instruction::Jalr(args) => {
-                self.inst_jalr(&args);
+                self.inst_jalr(&args)?;
                 skip_inc = true;
             }
             Instruction::Addi(args) => self.inst_addi(&args),
@@ -220,12 +220,16 @@ impl Processor {
         self.write_reg(args.rd, v);
     }
 
-    fn inst_jalr(&mut self, args: &IType) {
+    fn inst_jalr(&mut self, args: &IType) -> Result<(), Exception> {
         let lv = self.read_reg(args.rs1);
         let rv = self.sign_extend(args.imm);
-        let addr = (lv + rv) & 0xffff_fffe;
+        let new_pc = (lv + rv) & 0xffff_fffe;
+        if new_pc % 4 != 0 {
+            return Err(Exception::InstructionAddressMisaligned);
+        }
         self.write_reg(args.rd, self.pc + 4);
-        self.pc = addr;
+        self.set_pc(new_pc);
+        Ok(())
     }
 
     fn inst_addi(&mut self, args: &IType) {
@@ -655,27 +659,49 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_i_jalr() {
+    fn calc_rv32i_i_jalr() -> Result<(), Exception> {
         let memory: Box<dyn Memory> = Box::new(EmptyMemory);
         let args: IType = IType {
             rs1: 1,
             rd: 2,
-            imm: 0x123,
+            imm: 0x111,
         };
 
         let mut proc = Processor::new(memory);
 
         proc.pc = 0x1234;
         proc.write_reg(1, 0x567);
-        proc.inst_jalr(&args);
+        proc.inst_jalr(&args)?;
         assert_eq!(proc.read_reg(2), 0x1238);
-        assert_eq!(proc.pc, 0x68a);
+        assert_eq!(proc.pc, 0x678);
 
         proc.pc = 0x1234;
-        proc.write_reg(1, 0x456);
-        proc.inst_jalr(&args);
+        proc.write_reg(1, 0x543);
+        proc.inst_jalr(&args)?;
         assert_eq!(proc.read_reg(2), 0x1238);
-        assert_eq!(proc.pc, 0x578);
+        assert_eq!(proc.pc, 0x654);
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_i_jalr_invalid_address() -> Result<(), Exception> {
+        let memory: Box<dyn Memory> = Box::new(EmptyMemory);
+        let args: IType = IType {
+            rs1: 1,
+            rd: 2,
+            imm: 0x110,
+        };
+
+        let mut proc = Processor::new(memory);
+
+        proc.pc = 0x1234;
+        proc.write_reg(1, 0x567);
+        // x1 == 0x677, which is not aligned to a 4byte boundary.
+        assert_eq!(
+            proc.inst_jalr(&args),
+            Err(Exception::InstructionAddressMisaligned)
+        );
+        Ok(())
     }
 
     #[test]
