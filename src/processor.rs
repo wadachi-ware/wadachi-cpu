@@ -1,4 +1,4 @@
-use crate::decode::{decode, BType, IType, Instruction, JType, RType, UType};
+use crate::decode::{decode, BType, IType, Instruction, JType, RType, SType, UType};
 use crate::exception::Exception;
 use crate::memory::Memory;
 
@@ -106,6 +106,11 @@ impl Processor {
             Instruction::Lbu(args) => self.inst_lbu(&args),
             Instruction::Lhu(args) => self.inst_lhu(&args),
 
+            // S-Type
+            Instruction::Sb(args) => self.inst_sb(&args),
+            Instruction::Sh(args) => self.inst_sh(&args),
+            Instruction::Sw(args) => self.inst_sw(&args),
+
             // B-Type
             Instruction::Beq(args) => self.inst_beq(&args)?,
             Instruction::Bne(args) => self.inst_bne(&args)?,
@@ -135,7 +140,7 @@ impl Processor {
 }
 
 impl Processor {
-    const fn sign_extend(&self, val: u16) -> u32 {
+    const fn sign_extend(val: u16) -> u32 {
         if val & 0x800 != 0 {
             (val as u32) | 0xfffff000
         } else {
@@ -224,7 +229,7 @@ impl Processor {
 
     fn inst_jalr(&mut self, args: &IType) -> Result<(), Exception> {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let new_pc = (lv + rv) & 0xffff_fffe;
         if new_pc % 4 != 0 {
             return Err(Exception::InstructionAddressMisaligned);
@@ -237,7 +242,7 @@ impl Processor {
 
     fn inst_addi(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1) as i32;
-        let rv = self.sign_extend(args.imm) as i32;
+        let rv = Self::sign_extend(args.imm) as i32;
         let v = (lv + rv) as u32;
         self.write_reg(args.rd, v);
     }
@@ -251,21 +256,21 @@ impl Processor {
 
     fn inst_slti(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1) as i32;
-        let rv = self.sign_extend(args.imm) as i32;
+        let rv = Self::sign_extend(args.imm) as i32;
         let v = (lv < rv) as u32;
         self.write_reg(args.rd, v);
     }
 
     fn inst_sltiu(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = (lv < rv) as u32;
         self.write_reg(args.rd, v);
     }
 
     fn inst_xori(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = lv ^ rv;
         self.write_reg(args.rd, v);
     }
@@ -286,21 +291,21 @@ impl Processor {
 
     fn inst_ori(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = lv | rv;
         self.write_reg(args.rd, v);
     }
 
     fn inst_andi(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let v = lv & rv;
         self.write_reg(args.rd, v);
     }
 
     fn inst_lb(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = (self.mem.read_byte(addr) as i8) as u32;
         self.write_reg(args.rd, v);
@@ -308,7 +313,7 @@ impl Processor {
 
     fn inst_lh(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = (self.mem.read_halfword(addr) as i16) as u32;
         self.write_reg(args.rd, v);
@@ -316,7 +321,7 @@ impl Processor {
 
     fn inst_lw(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = self.mem.read_word(addr);
         self.write_reg(args.rd, v);
@@ -324,7 +329,7 @@ impl Processor {
 
     fn inst_lbu(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = self.mem.read_byte(addr) as u32;
         self.write_reg(args.rd, v);
@@ -332,10 +337,37 @@ impl Processor {
 
     fn inst_lhu(&mut self, args: &IType) {
         let lv = self.read_reg(args.rs1);
-        let rv = self.sign_extend(args.imm);
+        let rv = Self::sign_extend(args.imm);
         let addr = (lv + rv) as usize;
         let v = self.mem.read_halfword(addr) as u32;
         self.write_reg(args.rd, v);
+    }
+
+    fn inst_sb(&mut self, args: &SType) {
+        let base = self.read_reg(args.rs1);
+        let offset = Self::sign_extend(args.imm);
+        let addr = (base + offset) as usize;
+        // Write least significant byte in rs2.
+        let data = self.read_reg(args.rs2) & 0xff;
+        self.mem.write_byte(addr, data as u8);
+    }
+
+    fn inst_sh(&mut self, args: &SType) {
+        let base = self.read_reg(args.rs1);
+        let offset = Self::sign_extend(args.imm);
+        let addr = (base + offset) as usize;
+        // Write least significant 2 byte in rs2.
+        let data = self.read_reg(args.rs2) & 0xffff;
+        self.mem.write_halfword(addr, data as u16);
+    }
+
+    fn inst_sw(&mut self, args: &SType) {
+        let base = self.read_reg(args.rs1);
+        let offset = Self::sign_extend(args.imm);
+        let addr = (base + offset) as usize;
+        // Write least significant 4 byte in rs2.
+        let data = self.read_reg(args.rs2);
+        self.mem.write_word(addr, data);
     }
 
     // Inner procejure which is common to branch instructions.
@@ -347,7 +379,7 @@ impl Processor {
                 // cf. RISC-V Unprivileged ISA V20191213
                 Err(Exception::InstructionAddressMisaligned)
             } else {
-                let offset = self.sign_extend(offset);
+                let offset = Self::sign_extend(offset);
                 self.pc += offset;
                 self.has_jumped = true;
                 Ok(())
@@ -673,8 +705,8 @@ mod tests {
         };
 
         let mut proc = Processor::new(memory);
+        proc.set_pc(0x1234);
 
-        proc.pc = 0x1234;
         proc.write_reg(1, 0x567);
         proc.inst_jalr(&args)?;
         assert_eq!(proc.read_reg(2), 0x1238);
@@ -927,6 +959,57 @@ mod tests {
 
         proc.inst_lhu(&args);
         assert_eq!(proc.read_reg(2), 0x8080);
+    }
+
+    #[test]
+    fn calc_rv32i_i_sb() {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = SType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x2,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x2);
+        proc.write_reg(2, 0x180);
+        proc.inst_sb(&args);
+        assert_eq!(proc.mem.read_byte(4), 0x80);
+    }
+
+    #[test]
+    fn calc_rv32i_i_sh() {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = SType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x2,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x2);
+        proc.write_reg(2, 0x18080);
+        proc.inst_sh(&args);
+        assert_eq!(proc.mem.read_halfword(4), 0x8080);
+    }
+
+    #[test]
+    fn calc_rv32i_i_sw() {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = SType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x2,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x2);
+        proc.write_reg(2, 0x80808080);
+        proc.inst_sw(&args);
+        assert_eq!(proc.mem.read_word(4), 0x80808080);
     }
 
     #[test]
