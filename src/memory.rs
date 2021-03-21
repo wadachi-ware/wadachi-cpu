@@ -67,9 +67,7 @@ pub struct VectorMemory {
 
 impl VectorMemory {
     pub fn new(size: usize) -> Self {
-        let mut memory = Vec::with_capacity(size);
-        memory.resize(size, 0);
-
+        let memory = vec![0; size];
         Self { memory }
     }
 

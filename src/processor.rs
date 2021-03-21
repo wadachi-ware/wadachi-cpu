@@ -2,6 +2,14 @@ use crate::decode::{decode, BType, IType, Instruction, JType, RType, SType, UTyp
 use crate::exception::Exception;
 use crate::memory::Memory;
 
+/// Priviledge level.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Mode {
+    User = 0b00,
+    Supervisor = 0b01,
+    Machine = 0b11,
+}
+
 pub struct Processor {
     pub regs: [u32; 32],
     pub pc: u32,
@@ -46,7 +54,7 @@ impl Processor {
     /// Execute the program stored in the memory.
     pub fn execute(&mut self) {
         loop {
-            if let Err(_) = self.tick() {
+            if self.tick().is_err() {
                 // We have nothing to do with exception, stop the loop for now.
                 break;
             }
@@ -962,7 +970,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_i_sb() {
+    fn calc_rv32i_i_csrrw() {
         let memory = vec![0; 8];
         let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
         let args = SType {
@@ -979,7 +987,24 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_i_sh() {
+    fn calc_rv32i_s_sb() {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = SType {
+            rs1: 1,
+            rs2: 2,
+            imm: 0x2,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(1, 0x2);
+        proc.write_reg(2, 0x180);
+        proc.inst_sb(&args);
+        assert_eq!(proc.mem.read_byte(4), 0x80);
+    }
+
+    #[test]
+    fn calc_rv32i_s_sh() {
         let memory = vec![0; 8];
         let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
         let args = SType {
@@ -996,7 +1021,7 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_i_sw() {
+    fn calc_rv32i_s_sw() {
         let memory = vec![0; 8];
         let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
         let args = SType {
