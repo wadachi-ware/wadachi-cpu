@@ -8,6 +8,45 @@ const CSR_NUM: usize = 4096;
 const MODE_RANGE: Range<usize> = 8..10;
 const READ_WRITE_RANGE: Range<usize> = 10..12;
 
+pub mod address {
+    /// User level CSRs.
+    pub const USTATUS: usize = 0x000;
+    pub const UIE: usize = 0x004;
+    pub const UTVEC: usize = 0x005;
+    pub const USCRATCH: usize = 0x040;
+    pub const UEPC: usize = 0x041;
+    pub const UCAUSE: usize = 0x042;
+    pub const UTVAL: usize = 0x043;
+    pub const UIP: usize = 0x044;
+
+    /// Supervisor level CSRs.
+    pub const SSTATUS: usize = 0x100;
+    pub const SEDELEG: usize = 0x102;
+    pub const SIDELEG: usize = 0x103;
+    pub const SIE: usize = 0x104;
+    pub const STVEC: usize = 0x105;
+    pub const SCOUNTEREN: usize = 0x106;
+    pub const SSCRATCH: usize = 0x140;
+    pub const SEPC: usize = 0x141;
+    pub const SCAUSE: usize = 0x142;
+    pub const STVAL: usize = 0x143;
+    pub const SIP: usize = 0x144;
+    pub const SATP: usize = 0x180;
+
+    /// Machine level CSRs.
+    pub const MSTATUS: usize = 0x300;
+    pub const MEDELEG: usize = 0x302;
+    pub const MIDELEG: usize = 0x303;
+    pub const MIE: usize = 0x304;
+    pub const MTVEC: usize = 0x305;
+    pub const MCOUNTEREN: usize = 0x306;
+    pub const MSCRATCH: usize = 0x340;
+    pub const MEPC: usize = 0x341;
+    pub const MCAUSE: usize = 0x342;
+    pub const MTVAL: usize = 0x343;
+    pub const MIP: usize = 0x344;
+}
+
 #[derive(Clone, Debug)]
 pub struct Csr {
     registers: [u32; CSR_NUM],

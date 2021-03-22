@@ -1,9 +1,10 @@
+use crate::csr::Csr;
 use crate::decode::{decode, BType, IType, Instruction, JType, RType, SType, UType};
 use crate::exception::Exception;
 use crate::memory::Memory;
 
 /// Priviledge level.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     User = 0b00,
     Supervisor = 0b01,
@@ -11,9 +12,11 @@ pub enum Mode {
 }
 
 pub struct Processor {
-    pub regs: [u32; 32],
     pub pc: u32,
-    pub mem: Box<dyn Memory>,
+    pub(crate) regs: [u32; 32],
+    pub(crate) csr: Csr,
+    mem: Box<dyn Memory>,
+    mode: Mode,
     // Used to determine if the pc should be incremented.
     has_jumped: bool,
 }
@@ -22,9 +25,11 @@ impl Processor {
     /// Instruction execution starts from the `pc`.
     pub fn new(memory: Box<dyn Memory>) -> Self {
         Self {
-            regs: [0; 32],
             pc: 0,
+            regs: [0; 32],
+            csr: Csr::default(),
             mem: memory,
+            mode: Mode::Machine,
             has_jumped: false,
         }
     }
@@ -77,6 +82,17 @@ impl Processor {
         }
     }
 
+    /// Read the CSR value at `addr`.
+    /// `addr` is `u16` because immediate of CSR instruction is decoded as `u16`.
+    fn read_csr(&self, addr: u16) -> Result<u32, Exception> {
+        self.csr.read(addr as usize, self.mode)
+    }
+
+    /// Write `value` to the CSR at `addr`.
+    fn write_csr(&mut self, addr: u16, value: u32) -> Result<(), Exception> {
+        self.csr.write(addr as usize, value, self.mode)
+    }
+
     /// Read an instruction from current program counter and execute it.
     pub fn tick(&mut self) -> Result<(), Exception> {
         if self.pc + 4 > self.mem.len() as u32 {
@@ -113,6 +129,7 @@ impl Processor {
             Instruction::Lw(args) => self.inst_lw(&args),
             Instruction::Lbu(args) => self.inst_lbu(&args),
             Instruction::Lhu(args) => self.inst_lhu(&args),
+            Instruction::Csrrw(args) => self.inst_csrrw(&args)?,
 
             // S-Type
             Instruction::Sb(args) => self.inst_sb(&args),
@@ -351,6 +368,14 @@ impl Processor {
         self.write_reg(args.rd, v);
     }
 
+    fn inst_csrrw(&mut self, args: &IType) -> Result<(), Exception> {
+        let old_csr = self.read_csr(args.imm)?;
+        self.write_reg(args.rd, old_csr);
+        let value = self.read_reg(args.rs1);
+        self.write_csr(args.imm, value)?;
+        Ok(())
+    }
+
     fn inst_sb(&mut self, args: &SType) {
         let base = self.read_reg(args.rs1);
         let offset = Self::sign_extend(args.imm);
@@ -461,6 +486,7 @@ impl Processor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::csr::address::*;
     use crate::memory::{EmptyMemory, VectorMemory};
 
     #[test]
@@ -970,20 +996,22 @@ mod tests {
     }
 
     #[test]
-    fn calc_rv32i_i_csrrw() {
+    fn calc_rv32i_i_csrrw() -> Result<(), Exception> {
         let memory = vec![0; 8];
         let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
-        let args = SType {
-            rs1: 1,
-            rs2: 2,
-            imm: 0x2,
+        let args = IType {
+            rd: 1,
+            rs1: 2,
+            imm: UTVEC as u16,
         };
 
         let mut proc = Processor::new(memory);
-        proc.write_reg(1, 0x2);
-        proc.write_reg(2, 0x180);
-        proc.inst_sb(&args);
-        assert_eq!(proc.mem.read_byte(4), 0x80);
+        proc.write_reg(args.rs1, 0x2);
+        proc.write_csr(args.imm, 0x1)?;
+        proc.inst_csrrw(&args)?;
+        assert_eq!(proc.read_reg(args.rd), 0x1); // rd <- CSR[args.imm]
+        assert_eq!(proc.read_csr(args.imm)?, 0x2); // CSR[args.imm] <- rs1
+        Ok(())
     }
 
     #[test]
