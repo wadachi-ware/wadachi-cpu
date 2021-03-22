@@ -130,6 +130,8 @@ impl Processor {
             Instruction::Lbu(args) => self.inst_lbu(&args),
             Instruction::Lhu(args) => self.inst_lhu(&args),
             Instruction::Csrrw(args) => self.inst_csrrw(&args)?,
+            Instruction::Csrrs(args) => self.inst_csrrs(&args)?,
+            Instruction::Csrrc(args) => self.inst_csrrc(&args)?,
 
             // S-Type
             Instruction::Sb(args) => self.inst_sb(&args),
@@ -373,6 +375,22 @@ impl Processor {
         self.write_reg(args.rd, old_csr);
         let value = self.read_reg(args.rs1);
         self.write_csr(args.imm, value)?;
+        Ok(())
+    }
+
+    fn inst_csrrs(&mut self, args: &IType) -> Result<(), Exception> {
+        let old_csr = self.read_csr(args.imm)?;
+        self.write_reg(args.rd, old_csr);
+        let value = self.read_reg(args.rs1);
+        self.write_csr(args.imm, old_csr | value)?;
+        Ok(())
+    }
+
+    fn inst_csrrc(&mut self, args: &IType) -> Result<(), Exception> {
+        let old_csr = self.read_csr(args.imm)?;
+        self.write_reg(args.rd, old_csr);
+        let value = self.read_reg(args.rs1);
+        self.write_csr(args.imm, dbg!(old_csr) & dbg!(!value))?;
         Ok(())
     }
 
@@ -1009,8 +1027,46 @@ mod tests {
         proc.write_reg(args.rs1, 0x2);
         proc.write_csr(args.imm, 0x1)?;
         proc.inst_csrrw(&args)?;
-        assert_eq!(proc.read_reg(args.rd), 0x1); // rd <- CSR[args.imm]
-        assert_eq!(proc.read_csr(args.imm)?, 0x2); // CSR[args.imm] <- rs1
+        assert_eq!(proc.read_reg(args.rd), 0x1); // rd = CSR[args.imm]
+        assert_eq!(proc.read_csr(args.imm)?, 0x2); // CSR[args.imm] = rs1
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_i_csrrs() -> Result<(), Exception> {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = IType {
+            rd: 1,
+            rs1: 2,
+            imm: UTVEC as u16,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(args.rs1, 0x2);
+        proc.write_csr(args.imm, 0x1)?;
+        proc.inst_csrrs(&args)?;
+        assert_eq!(proc.read_reg(args.rd), 0x1); // rd = CSR[args.imm]
+        assert_eq!(proc.read_csr(args.imm)?, 0x3); // CSR[args.imm] |= rs1
+        Ok(())
+    }
+
+    #[test]
+    fn calc_rv32i_i_csrrc() -> Result<(), Exception> {
+        let memory = vec![0; 8];
+        let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
+        let args = IType {
+            rd: 1,
+            rs1: 2,
+            imm: UTVEC as u16,
+        };
+
+        let mut proc = Processor::new(memory);
+        proc.write_reg(args.rs1, 0x2);
+        proc.write_csr(args.imm, 0x4)?;
+        proc.inst_csrrc(&args)?;
+        assert_eq!(proc.read_reg(args.rd), 0x4); // rd = CSR[args.imm]
+        assert_eq!(proc.read_csr(args.imm)?, 0x4); // CSR[args.imm] &= !rs1
         Ok(())
     }
 
