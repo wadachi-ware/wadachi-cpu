@@ -1,3 +1,4 @@
+pub mod csr;
 pub mod decode;
 pub mod exception;
 pub mod memory;
