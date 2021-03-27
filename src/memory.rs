@@ -23,6 +23,9 @@ pub trait Memory {
     /// Write word at *addr*
     fn write_word(&mut self, addr: usize, data: u32);
 
+    // Copy `binary` to the memory at `addr`.
+    fn load_binary(&mut self, addr: usize, binary: &[u8]);
+
     /// Get memory size in byte.
     fn len(&self) -> usize;
 }
@@ -55,6 +58,8 @@ impl Memory for EmptyMemory {
 
     fn write_word(&mut self, _addr: usize, _data: u32) {}
 
+    fn load_binary(&mut self, _addr: usize, _binary: &[u8]) {}
+
     fn len(&self) -> usize {
         0
     }
@@ -67,9 +72,7 @@ pub struct VectorMemory {
 
 impl VectorMemory {
     pub fn new(size: usize) -> Self {
-        let mut memory = Vec::with_capacity(size);
-        memory.resize(size, 0);
-
+        let memory = vec![0; size];
         Self { memory }
     }
 
@@ -125,18 +128,11 @@ impl VectorMemory {
         self.memory[addr + 2] = (val >> 16) as u8;
         self.memory[addr + 3] = (val >> 24) as u8;
     }
-
-    /// read an instruction located at addr
-    /// This impl stores instructions as big-endian value
-    /// but, we don't know whether it's popular...
-    pub fn write_inst(&mut self, addr: usize, inst: u32) {
-        self.write_bw(addr, inst);
-    }
 }
 
 impl Memory for VectorMemory {
     fn read_inst(&self, addr: usize) -> u32 {
-        self.read_bw(addr)
+        self.read_lw(addr)
     }
 
     fn read_byte(&self, addr: usize) -> u8 {
@@ -151,7 +147,8 @@ impl Memory for VectorMemory {
         self.read_lw(addr)
     }
 
-    /// write word at *addr*
+    /// This impl stores instructions as big-endian value
+    /// but, we don't know whether it's popular...
     fn write_inst(&mut self, addr: usize, data: u32) {
         self.write_bw(addr, data);
     }
@@ -166,6 +163,10 @@ impl Memory for VectorMemory {
 
     fn write_word(&mut self, addr: usize, data: u32) {
         self.write_lw(addr, data);
+    }
+
+    fn load_binary(&mut self, addr: usize, binary: &[u8]) {
+        self.memory.splice(addr..(addr + binary.len()), binary.iter().cloned());
     }
 
     fn len(&self) -> usize {

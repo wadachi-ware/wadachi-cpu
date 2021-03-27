@@ -171,10 +171,11 @@ impl UType {
 
 impl JType {
     fn new(instruction: u32) -> Self {
-        let imm = instruction.get_bits(21..31)
+        let imm = (instruction.get_bits(21..31)
             + (instruction.get_bits(20..21) << 10)
             + (instruction.get_bits(12..20) << 11)
-            + (instruction.get_bits(31..32) << 19);
+            + (instruction.get_bits(31..32) << 19))
+            << 1;
         Self {
             rd: instruction.get_bits(RD_RANGE) as usize,
             imm,
@@ -267,14 +268,7 @@ pub fn decode(instruction: u32) -> Result<Instruction, Exception> {
         },
 
         // J-Type
-        0b1101111 => {
-            let decoded = JType::new(instruction);
-            // Target address should be aligned 4byte boundary.
-            if decoded.imm % 4 != 0 {
-                return Err(Exception::InstructionAddressMisaligned);
-            }
-            Instruction::Jal(decoded)
-        }
+        0b1101111 => Instruction::Jal(JType::new(instruction)),
 
         // U-Type
         0b0110111 => Instruction::Lui(UType::new(instruction)),
@@ -716,20 +710,28 @@ mod tests {
 
     #[test]
     fn decode_rv32i_j() -> Result<(), Exception> {
-        // jal x1, 264704
         assert_eq!(
-            Instruction::Jal(JType { rd: 1, imm: 264704 }),
+            Instruction::Jal(JType {
+                rd: 1,
+                imm: 0b010000001010000000000
+            }),
             decode(0b01000000000010000001_00001_1101111)?
         );
-        Ok(())
-    }
 
-    #[test]
-    fn decode_invalid_rv32i_j() -> Result<(), Exception> {
-        // jal x1, 2
+        // jal x1, 4
         assert_eq!(
-            Err(Exception::InstructionAddressMisaligned),
-            decode(0b00000000001000000000_00001_1101111)
+            Instruction::Jal(JType { rd: 0, imm: 4 }),
+            decode(0b00000000010000000000_00000_1101111)?
+        );
+
+        // jal x1, -4
+        assert_eq!(
+            Instruction::Jal(JType {
+                rd: 1,
+                imm: 0b111111111111111111100
+            }),
+            // 11111111111111111100
+            decode(0b11111111110111111111_00001_1101111)?
         );
         Ok(())
     }

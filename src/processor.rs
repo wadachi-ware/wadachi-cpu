@@ -1,6 +1,7 @@
 use crate::decode::{decode, BType, IType, Instruction, JType, RType, SType, UType};
 use crate::exception::Exception;
 use crate::memory::Memory;
+use goblin::{elf::Elf, elf64::program_header::PT_LOAD, error::Error};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -32,22 +33,30 @@ impl Processor {
         self.pc = pc;
     }
 
-    /// Load a program, which is an array of `u32` integer, in the `address`.
-    pub fn load(&mut self, address: u32, program: Vec<u32>) {
-        if address % 4 != 0 {
-            panic!("Instruction address must be aligned to a 4byte boundary");
+    /// Load a program, which is an array of `u8` integer, in the `address`.
+    pub fn load(&mut self, program: Vec<u8>) -> Result<(), Error> {
+        let elf_binary = Elf::parse(&program)?;
+        for program_header in elf_binary.program_headers {
+            if program_header.p_type == PT_LOAD {
+                let segment_start = program_header.p_offset as usize;
+                let segment_end = segment_start + program_header.p_filesz as usize;
+                self.mem.load_binary(
+                    program_header.p_vaddr as usize,
+                    &program[segment_start..segment_end]
+                );
+            }
         }
-        for (index, instruction) in program.iter().enumerate() {
-            self.mem
-                .write_inst(address as usize + index * 4, *instruction);
-        }
+        let entry_point = elf_binary.header.e_entry;
+        self.set_pc(entry_point as u32);
+        Ok(())
     }
 
     /// Execute the program stored in the memory.
     pub fn execute(&mut self) {
         loop {
-            if let Err(_) = self.tick() {
+            if let Err(err) = self.tick() {
                 // We have nothing to do with exception, stop the loop for now.
+                dbg!(err);
                 break;
             }
         }
@@ -75,7 +84,9 @@ impl Processor {
             return Err(Exception::InstructionAccessFault);
         }
 
+        std::thread::sleep(std::time::Duration::from_millis(500));
         let raw_inst = self.mem.read_inst(self.pc as usize);
+        println!("PC: {:#x}", self.pc);
         match decode(raw_inst)? {
             // R-Type
             Instruction::Add(args) => self.inst_add(&args),
@@ -428,7 +439,6 @@ impl Processor {
     fn inst_auipc(&mut self, args: &UType) {
         let offset = args.imm << 12;
         let new_pc = self.pc + offset;
-        self.set_pc(new_pc);
         self.write_reg(args.rd, new_pc);
     }
 
@@ -1179,7 +1189,6 @@ mod tests {
         proc.set_pc(0x4);
         proc.inst_auipc(&args);
         assert_eq!(proc.read_reg(args.rd), 0xfffff004);
-        assert_eq!(proc.pc, 0xfffff004);
     }
 
     #[test]
