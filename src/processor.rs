@@ -2,7 +2,10 @@ use crate::decode::{decode, BType, IType, Instruction, JType, RType, SType, UTyp
 use crate::exception::Exception;
 use crate::memory::Memory;
 use goblin::{elf::Elf, elf64::program_header::PT_LOAD, error::Error};
-use std::{fmt::{self, Display}, time::Duration};
+use std::{
+    fmt::{self, Display},
+    time::Duration,
+};
 
 pub struct Processor {
     pub regs: [u32; 32],
