@@ -33,8 +33,8 @@ impl Processor {
         self.pc = pc;
     }
 
-    /// Load a program, which is an array of `u8` integer, in the `address`.
-    pub fn load(&mut self, program: Vec<u8>) -> Result<(), Error> {
+    /// Load an ELF binary, which is an array of `u8` integer.
+    pub fn load_elf(&mut self, program: Vec<u8>) -> Result<(), Error> {
         let elf_binary = Elf::parse(&program)?;
         for program_header in elf_binary.program_headers {
             if program_header.p_type == PT_LOAD {
@@ -42,13 +42,21 @@ impl Processor {
                 let segment_end = segment_start + program_header.p_filesz as usize;
                 self.mem.load_binary(
                     program_header.p_vaddr as usize,
-                    &program[segment_start..segment_end]
+                    &program[segment_start..segment_end],
                 );
             }
         }
         let entry_point = elf_binary.header.e_entry;
         self.set_pc(entry_point as u32);
         Ok(())
+    }
+
+    /// Load a binary including only instructions in the `address`.
+    pub fn load_raw(&mut self, address: u32, program: Vec<u32>) {
+        let address = address as usize;
+        for (index, inst) in program.into_iter().enumerate() {
+            self.mem.write_inst(address + index * 4, inst);
+        }
     }
 
     /// Execute the program stored in the memory.

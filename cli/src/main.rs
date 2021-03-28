@@ -12,7 +12,7 @@ fn main() -> io::Result<()> {
     let memory_size = 0xf000_0000;
     let memory = VectorMemory::new(memory_size);
     let mut processor = Processor::new(Box::new(memory));
-    if let Err(err) = processor.load(program) {
+    if let Err(err) = processor.load_elf(program) {
         eprintln!("{:?}", err);
     }
     processor.execute();

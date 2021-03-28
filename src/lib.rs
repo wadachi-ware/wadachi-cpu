@@ -19,16 +19,15 @@ mod tests {
         */
         let memory = vec![0; 24];
         let memory: Box<dyn Memory> = Box::new(VectorMemory::from(memory));
-        let start_address = 4;
+        let entry_point = 4;
         let mut processor = Processor::new(memory);
-        processor.set_pc(start_address);
-        /*
-        processor.load(
+        processor.set_pc(entry_point);
+        processor.load_raw(
+            entry_point,
             vec![0x00178793, 0x00278793, 0x00380813, 0x00281813, 0x010787b3],
         );
-        */
         processor.execute();
-        // assert_eq!(15, processor.regs[15]);
-        // assert_eq!(12, processor.regs[16]);
+        assert_eq!(15, processor.regs[15]);
+        assert_eq!(12, processor.regs[16]);
     }
 }

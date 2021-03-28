@@ -150,7 +150,7 @@ impl Memory for VectorMemory {
     /// This impl stores instructions as big-endian value
     /// but, we don't know whether it's popular...
     fn write_inst(&mut self, addr: usize, data: u32) {
-        self.write_bw(addr, data);
+        self.write_lw(addr, data);
     }
 
     fn write_byte(&mut self, addr: usize, data: u8) {
@@ -166,7 +166,8 @@ impl Memory for VectorMemory {
     }
 
     fn load_binary(&mut self, addr: usize, binary: &[u8]) {
-        self.memory.splice(addr..(addr + binary.len()), binary.iter().cloned());
+        self.memory
+            .splice(addr..(addr + binary.len()), binary.iter().cloned());
     }
 
     fn len(&self) -> usize {
