@@ -2,6 +2,7 @@ use crate::decode::{decode, BType, IType, Instruction, JType, RType, SType, UTyp
 use crate::exception::Exception;
 use crate::memory::Memory;
 use goblin::{elf::Elf, elf64::program_header::PT_LOAD, error::Error};
+use std::fmt::{self, write, Display};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -465,6 +466,24 @@ impl Processor {
         self.set_pc(new_pc);
         self.has_jumped = true;
         Ok(())
+    }
+}
+
+impl Display for Processor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let output = (0..self.regs.len())
+            .collect::<Vec<_>>()
+            .chunks(8)
+            .map(|chunk| {
+                chunk
+                    .iter()
+                    .map(|&index| format!("x{:02}: {:#010x}", index, self.read_reg(index)))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        write!(f, "{}", output)
     }
 }
 
