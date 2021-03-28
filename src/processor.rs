@@ -2,7 +2,7 @@ use crate::decode::{decode, BType, IType, Instruction, JType, RType, SType, UTyp
 use crate::exception::Exception;
 use crate::memory::Memory;
 use goblin::{elf::Elf, elf64::program_header::PT_LOAD, error::Error};
-use std::fmt::{self, write, Display};
+use std::{fmt::{self, Display}, time::Duration};
 
 pub struct Processor {
     pub regs: [u32; 32],
@@ -10,6 +10,7 @@ pub struct Processor {
     pub mem: Box<dyn Memory>,
     // Used to determine if the pc should be incremented.
     has_jumped: bool,
+    interval: Duration,
 }
 
 impl Processor {
@@ -20,6 +21,7 @@ impl Processor {
             pc: 0,
             mem: memory,
             has_jumped: false,
+            interval: Duration::from_millis(0),
         }
     }
 
@@ -32,6 +34,11 @@ impl Processor {
             panic!("Instruction address must be aligned to a 4byte boundary");
         }
         self.pc = pc;
+    }
+
+    /// Set time interval to execute every instruction.
+    pub fn set_interval(&mut self, interval: u64) {
+        self.interval = Duration::from_millis(interval);
     }
 
     /// Load an ELF binary, which is an array of `u8` integer.
@@ -93,9 +100,9 @@ impl Processor {
             return Err(Exception::InstructionAccessFault);
         }
 
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        let raw_inst = self.mem.read_inst(self.pc as usize);
+        std::thread::sleep(self.interval);
         println!("PC: {:#x}", self.pc);
+        let raw_inst = self.mem.read_inst(self.pc as usize);
         match decode(raw_inst)? {
             // R-Type
             Instruction::Add(args) => self.inst_add(&args),
@@ -471,7 +478,7 @@ impl Processor {
 
 impl Display for Processor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let output = (0..self.regs.len())
+        let mut output = (0..self.regs.len())
             .collect::<Vec<_>>()
             .chunks(8)
             .map(|chunk| {
@@ -481,9 +488,9 @@ impl Display for Processor {
                     .collect::<Vec<_>>()
                     .join(", ")
             })
-            .collect::<Vec<_>>()
-            .join("\n");
-        write!(f, "{}", output)
+            .collect::<Vec<_>>();
+        output.push(format!("PC : {:#010x}", self.pc));
+        write!(f, "{}", output.join("\n"))
     }
 }
 

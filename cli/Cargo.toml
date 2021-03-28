@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 wadachi-cpu = { path = "../" }
+structopt = "0.3.21"
